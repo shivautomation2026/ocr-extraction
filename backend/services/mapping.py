@@ -10,6 +10,7 @@ from ..core.config import settings
 from google import genai
 import re
 from backend.services.sap_api import SAPClient
+from backend.services.neo4j_mapper import Neo4jItemMapper
 import time
 
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +30,7 @@ class Mapper:
     def __init__(self):
         self.sap_client = SAPClient()
         self.gemini_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        self.neo4j_mapper = Neo4jItemMapper()  # Initialize Neo4j mapper
         self.sap_client.save_items_to_csv()
         self.sap_client.save_item_groups_to_csv()
         self.sap_client.save_business_partners()
@@ -154,6 +156,37 @@ class Mapper:
                     continue
 
                 if not item_code:
+                    # First, try Neo4j-based mapping (category-aware search)
+                    logger.info(f"Attempting Neo4j-based mapping for: '{item_desc}'")
+                    neo4j_result = self.neo4j_mapper.map_item_to_code(item_desc)
+                    
+                    if neo4j_result.get("code"):
+                        item_code = neo4j_result["code"]
+                        match_type = neo4j_result.get("match_type", "unknown")
+                        category = neo4j_result.get("category", "unknown")
+                        
+                        # Get UoM entry from item list
+                        item_row = self.item_list_df[self.item_list_df["ItemCode"] == item_code]
+                        if not item_row.empty:
+                            uom_entry = int(item_row.iloc[0]['InventoryUoMEntry'])
+                        else:
+                            uom_entry = None
+                        
+                        collection.update_one(
+                            {"uid": document_uid},
+                            {"$set": {
+                                f"extracted_details.line_items.{id}.ItemCode": item_code,
+                                f"extracted_details.line_items.{id}.UoMCode": uom_entry,
+                                f"extracted_details.line_items.{id}.MatchType": match_type,
+                                f"extracted_details.line_items.{id}.Category": category
+                            }}
+                        )
+                        logger.info(f"Neo4j mapped line item {id}: '{item_desc}' -> {item_code} "
+                                  f"(category: {category}, match: {match_type})")
+                        continue
+                    
+                    # Fallback to original fuzzy matching on full item list
+                    logger.info(f"Neo4j mapping failed, falling back to fuzzy matching for: '{item_desc}'")
                     best_match = process.extractOne(
                         item_desc.lower(), 
                         self.item_names_list, 
