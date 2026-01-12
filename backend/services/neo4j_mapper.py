@@ -64,7 +64,7 @@ class Neo4jItemMapper:
     
     def __init__(self):
         self.driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
-        self.gemini_client = genai.Client(api_key="AIzaSyDh0odMOcaV4C6h17DByQR7GwDApJOHKfA")
+        self.gemini_client = genai.Client(api_key="yur-key")
         self._verify_connection()
     
     def _verify_connection(self):
