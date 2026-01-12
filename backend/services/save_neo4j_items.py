@@ -8,8 +8,8 @@ import os
 from neo4j import GraphDatabase
 
 # Neo4j connection settings
-NEO4J_URI = "neo4j+s://18356c3c.databases.neo4j.io"
-NEO4J_AUTH = ("neo4j", "fzEU2Yw_F07zwDGWqXlg7ynCrXM8bMuaReiZ0oKHDkg")
+NEO4J_URI = "neo4j+s"
+NEO4J_AUTH = ("neo4j", "")
 
 
 def get_all_categories(driver) -> list[dict]:
