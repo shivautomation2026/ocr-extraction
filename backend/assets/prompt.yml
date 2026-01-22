@@ -1,0 +1,205 @@
+category_mapping:
+  system: "You are a helpful assistant that maps product descriptions to categories based on item name and description. Items can belong to multiple categories if applicable."
+  
+  user: "Based on the following item name and description, suggest all appropriate categories.
+  
+    Item Name: '{item_name}'
+    Description: '{description}'
+    
+    These are the categories you can choose from:
+
+    
+
+    Category Descriptions:
+    1. health_and_safety
+      This category encompasses all items related to workplace safety, employee health protection, and emergency response equipment. Items that fall under this category include personal protective equipment (PPE) such as helmets, gloves, safety shoes, goggles, and protective clothing; fire safety equipment like fire extinguishers, fire blankets, and fire-fighting accessories; medical and first aid supplies including bandages, medicines, sanitizers, and hygiene products; safety testing equipment for monitoring workplace hazards; respiratory protection gear; fall protection equipment; and any materials used to ensure compliance with occupational health and safety regulations.
+    2. raw_material
+      This category includes all primary raw materials that are directly consumed in the main manufacturing process to produce finished goods. Items may include various forms of metal scrap (ferrous and non-ferrous), pig iron, sponge iron, billets, wire rods, coal and coke products, carbon materials, alloys, metal ingots, and any other unprocessed or semi-processed materials that serve as the base inputs for the production line. These are materials that undergo transformation during the manufacturing process.
+    3. finished_goods
+      This category contains all final products that are ready for sale to customers, as well as manufacturing by-products and waste materials generated during production. Items include the primary products manufactured by the company in various specifications, grades, and sizes; secondary products or variants of the main product line; manufacturing waste and scrap that can be sold or recycled; by-products generated during the production process; and any material that represents the end output of the manufacturing operations.TMT (Thermo-Mechanically Treated) bars/rods, Billet products specifically and other finished goods not covered in TMT or Billet
+    4. business_promotion_and_marketing
+      This category covers all materials and items used for marketing activities, brand promotion, and business development. Items that fall here include advertising materials such as banners, posters, flex boards, and signage; promotional merchandise like branded clothing, accessories, and giveaways; marketing collateral including brochures, flyers, and catalogs; display materials for exhibitions and events; branded packaging materials; corporate gifts; and any other items used to enhance brand visibility and promote business growth.
+    5. other
+      This is a catch-all category for miscellaneous items that do not fit into other specific categories. Items may include canteen and kitchen supplies such as food items, cooking equipment, and utensils; housekeeping materials like cleaning supplies, detergents, and sanitation products; guest house and accommodation items including bedding, furniture, and amenities; laboratory consumables and testing equipment; general operational supplies; administrative items; welfare and amenity products; and any other materials that support day-to-day operations but don't belong to specialized categories.  
+    6. fuel_lubricant_and_gas
+      This category includes all energy sources, lubricating materials, and industrial gases used in operations. Items that fall under this category include liquid fuels such as diesel, petrol, and kerosene; compressed and liquefied gases including oxygen, nitrogen, argon, LPG, and refrigerant gases; lubricating oils for engines, gears, and hydraulics; greases and lubricating compounds; coolants and cutting fluids; fuel additives; gas cylinders and related accessories like regulators and hoses; and any petroleum or chemical products used for lubrication, cooling, or energy generation.
+    7. printing_and_stationary
+      This category encompasses all office supplies, paper products, and printing materials. Items include writing instruments such as pens, pencils, and markers; paper products in various sizes and types; filing and documentation materials like folders, files, and binders; office accessories including staplers, punches, clips, and tape; printing consumables; customized business forms and registers; stamps and ink pads; notebooks and notepads; calculators; and any other items used for office documentation, record-keeping, and administrative task
+    8. it_and_accessories
+      This category covers all information technology hardware accessories, peripherals, and consumables that support computer systems and digital infrastructure. Items may include printer and copier consumables such as toners, cartridges, and drums; computer peripherals like keyboards, mice, and cables; networking equipment including routers, switches, and connectors; data storage devices; display accessories; phone and mobile accessories; IT tools and maintenance supplies; CCTV and surveillance equipment accessories; and specialized technology components for industrial automation and control system
+    9. civil
+      This category includes all construction materials, building supplies, and civil engineering items used for infrastructure development and maintenance. Items that fall here include plumbing materials such as pipes, fittings, valves, and fixtures; sanitary ware and bathroom fittings; paints, coatings, and surface treatment materials; construction chemicals and adhesives; building materials like cement, sand, aggregates, and bricks; structural materials; hardware items including fasteners, hinges, and locks; hand tools for construction and maintenance; waterproofing materials; and any supplies used in civil construction, building maintenance, and facility upkeep
+    10. heavy_equipments_and_automobiles
+      This category encompasses all spare parts, components, and consumables related to vehicles, heavy machinery, and mobile equipment. Items include engine parts and components; transmission and drivetrain parts; brake system components; suspension and steering parts; electrical and electronic components for vehicles; filters for air, oil, fuel, and hydraulic systems; tyres, tubes, and wheel components; batteries and charging systems; vehicle body parts and accessories; hydraulic and pneumatic components; parts specific to excavators, loaders, cranes, and other heavy equipment; and general automotive maintenance supplies.
+    11. mechanical
+      This category covers mechanical components, machine parts, fasteners, and hardware used in industrial machinery and equipment. Items that may fall here include bearings and bearing assemblies; all types of fasteners such as bolts, nuts, washers, and screws; power transmission components like gears, couplings, belts, and chains; sealing materials including gaskets, O-rings, and mechanical seals; shafts, bushings, and sleeves; springs and clips; pump and compressor parts; tools for mechanical assembly and maintenance; machine accessories and attachments; and general mechanical hardware used in manufacturing equipment, rolling mills, and industrial machiner
+    12. electrical
+      This category includes all electrical components, equipment, and materials used in power distribution, control systems, and electrical installations. Items may include electrical cables and wiring in various types and specifications; circuit protection devices such as breakers, fuses, and relays; contactors and motor starters; transformers and power supplies; motors and motor components; electrical switches, sockets, and outlets; control panels and enclosures; automation components like PLCs, sensors, and I/O modules; capacitors and inductors; cable accessories including lugs, glands, and connectors; lighting fixtures and components; earthing materials; and all electrical consumables and supplies for industrial electrical system
+    13. auxiliary_raw_material
+      This category contains specialized raw materials and consumables that support the main production process but are not the primary raw materials. Items include refractory materials such as fire bricks, castables, and insulation products; crucibles and melting pot materials; continuous casting consumables like mould tubes, nozzles, and tundish materials; temperature measurement consumables; process-specific chemicals and additives; protective coatings and compounds; specialty materials for high-temperature applications; wire ropes and industrial ropes; consumable tools and wear parts; product identification materials like tags and labels; and any auxiliary materials that enable or support the manufacturing proces
+    14. asset
+      This category comprises major capital equipment, machinery, and high-value fixed assets that are capitalized rather than expensed. Items that fall under this category include heavy production machinery and manufacturing equipment; electrical infrastructure such as transformers, substations, and major switchgear; industrial vehicles and mobile equipment; plant and process equipment including large pumps, compressors, and material handling systems; automation and control systems; monitoring and surveillance systems; building infrastructure and structural components; specialized manufacturing tools and equipment; measurement and testing instruments of significant value; and any equipment or asset that represents a substantial investment and has a long useful life
+    15. service 
+      Professional services, maintenance contracts, consulting
+    16. wastages
+      Scrap materials, production waste, discarded materials
+    17. mesh 
+      This category is specifically designated for all items related to canteen operations, mess facilities, and employee dining services. Items that fall under this category include Food and Beverage Items, Mess Kits and Dining Supplies, Kitchen Equipment, Traditional Utensils, Cleaning and Hygiene Products, General kitchen item expenses and miscellaneous 
+    18. trading 
+      Items purchased for resale without processing
+
+
+    Here are some examples to guide your classification:
+
+    Example 1:
+    Item Name: Industrial Safety Helmet
+    Description: High-impact ABS safety helmet designed for construction and manufacturing environments. Features adjustable ratchet suspension system for comfortable fit, ventilation slots for airflow, and chin strap for secure attachment. Complies with EN 397 and ANSI Z89.1 safety standards. Available in multiple colors for different work zones. Inner foam padding provides cushioning and shock absorption. UV-resistant outer shell ensures durability in outdoor conditions.
+    Categories: health_and_safety
+
+    Example 2:
+    Item Name: Pig Iron Ingots
+    Description: High-grade pig iron manufactured through blast furnace process. Carbon content ranges from 3.5% to 4.5%, with low sulfur and phosphorus levels. Supplied in standard ingot form weighing approximately 50 kg each. Primary raw material for steel and cast iron production. Sourced from certified suppliers with consistent quality. Used directly in melting furnaces for manufacturing steel products. Available in bulk quantities with customizable delivery schedules.
+    Categories: raw_material
+
+    Example 3:
+    Item Name: Promotional Corporate Apparel Set
+    Description: Branded clothing kit including polo t-shirts, caps, and jackets with embroidered company logo. Made from premium cotton blend fabric for comfort and durability. Distributed during trade shows, corporate events, and client meetings to enhance brand visibility. Available in standard sizes with customizable color options. Includes professional packaging with company branding. Used as corporate gifts for employees and business partners. Part of annual marketing and brand promotion initiatives.
+    Categories: business_promotion_and_marketing
+
+    Example 4:
+    Item Name: High-Speed Diesel (HSD)
+    Description: Commercial grade high-speed diesel fuel conforming to BS VI emission standards. Stored in bulk storage tanks with capacity monitoring systems. Used for powering heavy equipment including excavators, loaders, forklifts, and backup diesel generators. Minimum cetane number of 51 for efficient combustion. Supplied by authorized petroleum distributors with regular quality testing. Consumption tracked for equipment operation and power generation during grid outages.
+    Categories: fuel_lubricant_and_gas
+
+    Example 5:
+    Item Name: Hydraulic Excavator - CAT 320D
+    Description: Caterpillar 320D hydraulic excavator with 20-ton operating weight. Powered by CAT C6.4 ACERT diesel engine delivering 121 HP. Features hydraulic system with variable displacement pumps for efficient operation. Equipped with standard bucket, quick coupler, and cabin with air conditioning. Maximum digging depth 6.7 meters and reach 10.2 meters. Used for material handling, excavation, and loading operations in the plant yard. Capital equipment asset registered with depreciation schedule. Includes operator training and maintenance service contract.
+    Categories: asset, heavy_equipments_and_automobiles
+
+    Example 6:
+    Item Name: Laser Printer Toner Cartridge - HP CF410A
+    Description: Original HP black toner cartridge compatible with Color LaserJet Pro M450 series printers. Page yield of approximately 2,300 pages at 5% coverage. Features high-quality toner powder for crisp text and sharp graphics. Easy installation with intelligent chip for automatic supply level detection. Used in office printers for administrative documentation, reports, and correspondence. Includes recycling instructions for environmental responsibility. Stored in climate-controlled conditions to maintain toner quality.
+    Categories: it_and_accessories, printing_and_stationary
+
+    Example 7:
+    Item Name: Short Length Billets
+    Description: Mild steel short length billets measuring 1500mm in length with a square
+    Categories: mechanical, finished_goods, raw_material
+    
+    Now classify the item provided above. Provide ALL applicable category names in a comma seperated format as the response. Consider carefully whether the item could serve multiple purposes or belong to multiple categories."
+
+item_description:
+  system: "You are a helpful assistant that creates concise, informative product descriptions for inventory categorization."
+  
+  user: "Create a description for the following item:
+  
+    Item Name: '{item_name}'
+    Vendor Name: '{vendor_name}'
+    
+    Requirements:
+    - Keep the description between 40-80 words
+    - Focus on essential information needed for category classification
+    - Include: product type, primary use/application, and key specifications
+    - Be specific and factual
+    - Avoid marketing language
+    
+    Here is an example:
+    
+    **Example Input:**
+    Item Name: Safety Goggles
+    Vendor Name: 3M Industrial Safety
+    
+    **Example Output:**
+    Polycarbonate safety goggles with anti-fog coating for eye protection in industrial environments. Features impact-resistant lenses meeting ANSI Z87.1 standards and adjustable elastic strap. Used for worker protection during grinding, welding preparation, and chemical handling operations. Compatible with safety helmets and suitable for manufacturing and construction applications.
+    
+    Now create a concise description for the item provided above."
+
+item_mapping_through_category:
+  system: "You are an expert at matching items based on their descriptions. You will be given a new item with its description and a list of existing items from a database. Your task is to find the best matching item(s)."
+  
+  user: "Match the following new item with the most appropriate existing item from the database.
+
+    New Item Information:
+    - Item Name: '{item_name}'
+    - Description: '{description}'
+    - Vendor: '{vendor_name}'
+    
+    Existing Items from Category '{category}':
+    {items_list}
+    
+    Instructions:
+    1. Compare the new item's name and description with each existing item
+    2. Look for matches in:
+       - Product type and specifications (e.g., size, dimensions, model)
+       - Material and grade
+       - Brand or manufacturer if mentioned
+       - Application or use case
+    3. If you find an exact or very close match, return ONLY the item code (e.g., 'FG00971')
+    4. If multiple items could match, return the most specific match
+    5. If no good match exists, return 'NO_MATCH'
+    
+    Examples:
+    
+    Example 1:
+    New Item: TMT Bar 28mm, Vendor: Steel Corp
+    Existing Items: FG00971: TMT Bar 28 MM, FG00996: TMT Bar 28 MM (Laxmi)
+    Best Match: FG00971
+    Reasoning: Exact size match, no specific brand mentioned so choose the generic one
+    
+    Example 2:
+    New Item: TMT Bar 28mm from Laxmi, Vendor: Laxmi Steel
+    Existing Items: FG00971: TMT Bar 28 MM, FG00996: TMT Bar 28 MM (Laxmi)
+    Best Match: FG00996
+    Reasoning: Both size and brand (Laxmi) match
+    
+    Example 3:
+    New Item: Printer Toner Cartridge HP, Vendor: Office Supplies
+    Existing Items: IT01168: CANON PRINTER TONNER, IT01177: Tonner
+    Best Match: NO_MATCH
+    Reasoning: The new item is for HP printer but existing items are for Canon or unspecified
+    
+    Return ONLY the item code or 'NO_MATCH'. Do not include any explanation."
+
+
+fuzzy_itemname_validation:
+  system: "You are an expert at determining if two product names refer to the same item. You must respond with ONLY 'true' or 'false'. Do not include any explanation."
+
+  user: "Determine if the fuzzy matched item is the same as the original item.
+  
+    Original Item Name: '{item_name}'
+    Original Item Description: '{item_description}'
+    Fuzzy Matched Item Name: '{fuzzy_item_name}'
+    
+    Consider these factors:
+    1. Do they refer to the same type of product?
+    2. Are the specifications similar (size, grade, type, material)?
+    3. Would they be used for the same purpose?
+    4. Are the key identifying characteristics matching?
+    
+    Examples:
+    
+    Example 1:
+    Original: 'TMT Bar 28mm'
+    Description: 'Thermo-mechanically treated steel bar for construction'
+    Fuzzy Match: 'TMT Bar 28 MM'
+    Answer: true (same product, same size)
+    
+    Example 2:
+    Original: 'Cement OPC 53 Grade'
+    Description: 'Ordinary Portland Cement for construction'
+    Fuzzy Match: 'SPARE COIL FOR 3TS 53 CONTACTOR'
+    Answer: false (completely different products - cement vs electrical component)
+    
+    Example 3:
+    Original: 'GI Pipe 2 inch'
+    Description: 'Galvanized iron pipe for plumbing'
+    Fuzzy Match: 'GI PIPE 2\"'
+    Answer: true (same product, same size)
+    
+    Example 4:
+    Original: 'Spring Washer'
+    Description: 'Steel spring washer for mechanical fastening'
+    Fuzzy Match: 'Ball Pain Hammer'
+    Answer: false (different products - fastener vs tool)
+    
+    Respond with ONLY 'true' or 'false'."

@@ -1,0 +1,18 @@
+[project]
+name = "ocr-extraction"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "langchain-community>=0.4.1",
+    "langchain-google-genai>=4.2.0",
+    "langchain-google-vertexai>=3.2.1",
+    "langchain-huggingface>=1.2.0",
+    "langgraph>=1.0.6",
+    "neo4j>=6.1.0",
+    "pinecone>=8.0.0",
+    "pinecone-text>=0.11.0",
+    "sentence-transformers>=5.2.0",
+    "torch>=2.9.1",
+]

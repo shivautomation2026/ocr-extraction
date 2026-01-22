@@ -10,3 +10,8 @@ __pycache__/
 
 backend/ipynb
 backend/services/mapping.ipynb
+
+.json
+# Google Cloud Service Account credentials
+shivautomation.json
+shivautomation-479307.json
