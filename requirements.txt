@@ -74,7 +74,6 @@ langchain-google-genai==4.2.0
 langchain-google-vertexai==2.0.24
 langchain-huggingface==1.2.0
 langchain-openai==1.1.7
-langchain-pinecone==0.2.13
 langchain-text-splitters==1.1.0
 langgraph==1.0.7
 langgraph-checkpoint==4.0.0
