@@ -50,11 +50,11 @@ async def get_field_mappings(document_uid: int):
         raise HTTPException(status_code=503, detail="Mapping service is unavailable: CSV file not loaded.")
     if gemini_model is None:
         raise HTTPException(status_code=503, detail="Mapping service is unavailable: AI client not configured.")
+    # try:
+    item_mapper.find_similar_vendor(document_uid)
+
+    item_mapper.map_items_to_codes(document_uid)
     try:
-        item_mapper.find_similar_vendor(document_uid)
-
-        item_mapper.map_items_to_codes(document_uid)
-
         document_json = collection.find_one({"uid": document_uid}, {"_id": 0, "extracted_details": 1})
         if not document_json:
             raise HTTPException(status_code=404, detail=f"Document with UID {document_uid} not found.")
@@ -84,6 +84,8 @@ async def get_field_mappings(document_uid: int):
         3. For each item in line_items:
            - If "ItemCode" exists in the line item, use it directly
            - If "ItemCode" doesn't exist but "product" or "description" exists, map it using the ItemCode field
+           - Include the quantity in integer format.
+           - Include the unit price in float format.
         4. Ignore any mention of table names — they are not needed.
         5. Use the "sap field name" from the CSV as the output key.
         6. If "vat_percentage" exists and is "13", set "TaxCode" to "VAT13".

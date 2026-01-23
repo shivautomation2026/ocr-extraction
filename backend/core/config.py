@@ -1,5 +1,7 @@
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
+from typing import Optional
 
 class Settings(BaseSettings):
     MONGODB_URI: str = ""
@@ -10,6 +12,19 @@ class Settings(BaseSettings):
     COMPANY_DB: str = ""
     USERNAME: str = ""
     PASSWORD: str = ""
+
+    GEMINI_API_KEY: str = ""
+
+    PINECONE_API_KEY: Optional[str]
+    PINECONE_INDEX_NAME: str
+
+    EMBEDDING_MODEL: str = "sentence-transformers/all-mpnet-base-v2"
+    TOP_K: int = 10
+    ALPHA: float = 0.5
+
+    GOOGLE_CLOUD_PROJECT: SecretStr
+    GOOGLE_CLOUD_LOCATION: str
+    GOOGLE_APPLICATION_CREDENTIALS: SecretStr
 
     model_config = SettingsConfigDict(
         env_file=".env",

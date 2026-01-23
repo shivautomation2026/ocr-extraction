@@ -49,7 +49,7 @@ class SAPClient:
         
     def save_items_to_csv(self):
         all_items = []
-        item_url_req = f'{self.base_url}Items/?$select=ItemCode,ItemName,UoMGroupEntry,InventoryUoMEntry'
+        item_url_req = f'{self.base_url}Items/?$select=ItemCode,ItemName,UoMGroupEntry,InventoryUoMEntry&$orderby=ItemName'
         
         while item_url_req:
             try:
@@ -216,7 +216,7 @@ class SAPClient:
     
     def save_business_partners(self):
         bp_list = []
-        bp_url = f"{self.base_url}BusinessPartners?$select=CardCode,CardName,CardType&$orderby=CardName"
+        bp_url = f"{self.base_url}BusinessPartners?$select=CardCode,CardName,CardType&$orderby=CardName&$filter=startswith(CardCode, 'V')"
 
         while bp_url:
             try:
