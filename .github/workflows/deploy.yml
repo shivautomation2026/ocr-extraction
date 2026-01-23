@@ -24,6 +24,14 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       REPO_OWNER: ${{ github.repository_owner }}
       REPO_NAME: ${{ github.event.repository.name }}
+      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+      PINECONE_INDEX_NAME: ${{ secrets.PINECONE_INDEX_NAME }}
+      EMBEDDING_MODEL: ${{ secrets.EMBEDDING_MODEL }}
+      TOP_K: ${{ secrets.TOP_K }}
+      ALPHA: ${{ secrets.ALPHA }}
+      GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+      GOOGLE_CLOUD_LOCATION: ${{ secrets.GOOGLE_CLOUD_LOCATION }}
+
       IMAGE: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPOSITORY }}/ocr-deployed:${{ github.sha }}
     steps:
       - name: Checkout code
@@ -58,7 +66,7 @@ jobs:
             --region $REGION \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "MONGODB_URI=$MONGODB_URI,MISTRAL_API_KEY=$MISTRAL_API_KEY,GOOGLE_API_KEY=$GOOGLE_API_KEY,HF_API_KEY=$HF_API_KEY,COMPANY_DB=$COMPANY_DB,BASE_URL=$BASE_URL,USERNAME=$USERNAME,PASSWORD=$PASSWORD" \
+            --set-env-vars "MONGODB_URI=$MONGODB_URI,MISTRAL_API_KEY=$MISTRAL_API_KEY,GOOGLE_API_KEY=$GOOGLE_API_KEY,HF_API_KEY=$HF_API_KEY,COMPANY_DB=$COMPANY_DB,BASE_URL=$BASE_URL,USERNAME=$USERNAME,PASSWORD=$PASSWORD,PINECONE_API_KEY=$PINECONE_API_KEY,PINECONE_INDEX_NAME=$PINECONE_INDEX_NAME,EMBEDDING_MODEL=$EMBEDDING_MODEL,TOP_K=$TOP_K,ALPHA=$ALPHA,GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT,GOOGLE_CLOUD_LOCATION=$GOOGLE_CLOUD_LOCATION" \
             --memory 512Mi \
             --cpu 1 \
             --min-instances 0 \
@@ -74,10 +82,6 @@ jobs:
             STATUS="✅ Success"
             COLOR="3066993"
             DESCRIPTION="Deployment completed successfully!"
-          else
-            STATUS="❌ Failed"
-            COLOR="15158332"
-            DESCRIPTION="Deployment failed. Check logs for details."
           fi
           
           COMMIT_MSG=$(echo '${{ github.event.head_commit.message }}' | sed 's/"/\\"/g' | sed 's/\n/ /g' | head -c 200)
