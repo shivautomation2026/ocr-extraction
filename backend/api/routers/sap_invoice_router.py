@@ -13,12 +13,12 @@ class DocumentLine(BaseModel):
     ItemCode: str
     UoMEntry: int
     TaxCode: str
-    # Quantity: float
-    # UnitPrice: float
+    Quantity: int
+    UnitPrice: float
 
 class SAPPurchaseInvoice(BaseModel):
     CardCode: str
-    # DocDate: str
+    DocDate: str
     DocumentLines: list[DocumentLine]
 
 @router.post("/PurchaseInvoices", summary="Post Purchase Invoice to SAP", description="Post a purchase invoice to SAP Business One system.")

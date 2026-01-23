@@ -10,8 +10,8 @@ from ..core.config import settings
 from google import genai
 import re
 from backend.services.sap_api import SAPClient
-from backend.services.neo4j_mapper import Neo4jItemMapper
 import time
+from backend.services.mapper.pinecone_itemname_mapper import app
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,13 +24,11 @@ class Item(BaseModel):
 class AccountCode(BaseModel):
     ItemName: str
     AccountCode: str
-    
 
 class Mapper:
     def __init__(self):
         self.sap_client = SAPClient()
         self.gemini_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
-        self.neo4j_mapper = Neo4jItemMapper()  # Initialize Neo4j mapper
         self.sap_client.save_items_to_csv()
         self.sap_client.save_item_groups_to_csv()
         self.sap_client.save_business_partners()
@@ -126,7 +124,6 @@ class Mapper:
             logger.error(f"Error in find_similar_vendor: {e}")
 
     def map_items_to_codes(self, document_uid: int):
-        self.sap_client.save_item_groups_to_csv()
 
         if self.item_list_df is None:
             logger.warning("Item list CSV not loaded. Skipping item code mapping.")
@@ -150,79 +147,80 @@ class Mapper:
             
             for id, item in enumerate(line_items):
                 item_code = item.get('ItemCode')
-                item_desc = item.get('products')
+                item_desc = item.get('description')
                 if not item_desc:
                     logger.warning(f"No product description found for line item {id}")
                     continue
 
                 if not item_code:
-                    # First, try Neo4j-based mapping (category-aware search)
-                    logger.info(f"Attempting Neo4j-based mapping for: '{item_desc}'")
-                    neo4j_result = self.neo4j_mapper.map_item_to_code(item_desc)
-                    
-                    if neo4j_result.get("code"):
-                        item_code = neo4j_result["code"]
-                        match_type = neo4j_result.get("match_type", "unknown")
-                        category = neo4j_result.get("category", "unknown")
-                        
-                        # Get UoM entry from item list
-                        item_row = self.item_list_df[self.item_list_df["ItemCode"] == item_code]
-                        if not item_row.empty:
-                            uom_entry = int(item_row.iloc[0]['InventoryUoMEntry'])
-                        else:
-                            uom_entry = None
-                        
-                        collection.update_one(
-                            {"uid": document_uid},
-                            {"$set": {
-                                f"extracted_details.line_items.{id}.ItemCode": item_code,
-                                f"extracted_details.line_items.{id}.UoMCode": uom_entry,
-                                f"extracted_details.line_items.{id}.MatchType": match_type,
-                                f"extracted_details.line_items.{id}.Category": category
-                            }}
-                        )
-                        logger.info(f"Neo4j mapped line item {id}: '{item_desc}' -> {item_code} "
-                                  f"(category: {category}, match: {match_type})")
-                        continue
-                    
-                    # Fallback to original fuzzy matching on full item list
-                    logger.info(f"Neo4j mapping failed, falling back to fuzzy matching for: '{item_desc}'")
-                    best_match = process.extractOne(
-                        item_desc.lower(), 
-                        self.item_names_list, 
-                        scorer=fuzz.ratio
-                    )
-                    logger.info(f"Best item match: {best_match}")
+                    # logger.info(f"Falling back to fuzzy matching for: '{item_desc}'")
+                    # best_match = process.extractOne(
+                    #     item_desc.lower(), 
+                    #     self.item_names_list, 
+                    #     scorer=fuzz.ratio
+                    # )
+                    # logger.info(f"Best item match: {best_match}")
 
-                    if best_match and best_match[1] >= 80:
-                        matched_item_name = best_match[0]
-                        similarity_score = best_match[1]
+                    # if best_match and best_match[1] >= 80:
+                    #     matched_item_name = best_match[0]
+                    #     similarity_score = best_match[1]
 
-                        item_row = self.item_list_df[self.item_list_df["ItemName"].str.lower() == matched_item_name]
-                        if not item_row.empty:
-                            item_code = item_row.iloc[0]['ItemCode']
-                            uom_entry = int(item_row.iloc[0]['InventoryUoMEntry']) # Convert numpy.int64 to python int
+                    #     item_row = self.item_list_df[self.item_list_df["ItemName"].str.lower() == matched_item_name]
+                    #     if not item_row.empty:
+                    #         item_code = item_row.iloc[0]['ItemCode']
+                    #         uom_entry = int(item_row.iloc[0]['InventoryUoMEntry']) # Convert numpy.int64 to python int
                             
-                            collection.update_one(
+                    #         collection.update_one(
+                    #             {"uid": document_uid},
+                    #             {"$set": {f"extracted_details.line_items.{id}.ItemCode": item_code, f"extracted_details.line_items.{id}.UoMCode": uom_entry}}
+                    #         )
+                    #         logger.info(f"Mapped line item {id}: '{item_desc}' to ItemCode '{item_code}' "
+                    #                 f"(matched to '{matched_item_name}' with {similarity_score}% similarity).")
+                    # else:
+                    initial_state = {
+                        "item_name": item_desc,
+                        "vendor_name": incoming_json['vendor_details']['name'],
+                        "description": "",
+                        "categories": [],
+                        "fuzzy_item_code": "NO_MATCH",
+                        "fuzzy_item_name": "",
+                        "fuzzy_item_uom_group_entry": "",
+                        "fuzzy_item_inventory_uom_entry": "",
+                        "fuzzy_score": 0.0,
+                        "pinecone_results": [],
+                        "matched_item_code": "NO_MATCH",
+                        "matched_item_name": "",
+                        "matched_item_uom_group_entry": "",
+                        "matched_item_inventory_uom_entry": "",
+                        "match_method": "",
+                        "fuzzy_validated": False
+                    }
+                    result = app.invoke(initial_state)
+                    if not result['matched_item_code'] == "NO_MATCH":
+                        collection.update_one(
                                 {"uid": document_uid},
-                                {"$set": {f"extracted_details.line_items.{id}.ItemCode": item_code, f"extracted_details.line_items.{id}.UoMCode": uom_entry}}
+                                {"$set": {f"extracted_details.line_items.{id}.ItemCode": result['matched_item_code'],f"extracted_details.line_items.{id}.description" : result['matched_item_name'],f"extracted_details.line_items.{id}.UoMCode": result['matched_item_inventory_uom_entry']}}
                             )
-                            logger.info(f"Mapped line item {id}: '{item_desc}' to ItemCode '{item_code}' "
-                                    f"(matched to '{matched_item_name}' with {similarity_score}% similarity).")
-                    else:
-                        logger.warning(f"No matching ItemCode found for line item {id}: '{item_desc}'")
-                        time.sleep(5) # Add a delay before creating a new item
-                        new_item_codes = self.create_new_items(item_desc)
-                        time.sleep(5) # Add a delay between API calls
-                        account_code_data = self.map_account_codes(item_desc)
-                        if new_item_codes and account_code_data:
-                            collection.update_one(
-                                {"uid": document_uid},
-                                {"$set": {f"extracted_details.line_items.{id}.ItemCode": new_item_codes['ItemCode'], f"extracted_details.line_items.{id}.UoMCode": new_item_codes['InventoryUoMEntry'], f"extracted_details.line_items.{id}.AccountCode": account_code_data['AccountCode']}}
-                            )
-                            logger.info(f"Created and mapped new item for line item {id}: '{item_desc}' with ItemCode '{new_item_codes['ItemCode']}'")
-                        else:
-                            logger.error(f"Failed to create or map account code for new item: '{item_desc}'")
+                        logger.info(f"Mapped line item {id}: '{item_desc}' to ItemCode '{result['matched_item_code']}' using {result['match_method']} method.")
+                    logger.info(result['matched_item_code'])
+                    logger.info(result['matched_item_name'])
+                    logger.info(result['matched_item_uom_group_entry'])
+                    logger.info(result['matched_item_inventory_uom_entry'])
+                    
+                    # logger.warning(f"No matching ItemCode found for line item {id}: '{item_desc}'")
+                        
+                        # time.sleep(5) # Add a delay before creating a new item
+                        # new_item_codes = self.create_new_items(item_desc)
+                        # time.sleep(5) # Add a delay between API calls
+                        # account_code_data = self.map_account_codes(item_desc)
+                        # if new_item_codes and account_code_data:
+                        #     collection.update_one(
+                        #         {"uid": document_uid},
+                        #         {"$set": {f"extracted_details.line_items.{id}.ItemCode": new_item_codes['ItemCode'], f"extracted_details.line_items.{id}.UoMCode": new_item_codes['InventoryUoMEntry'], f"extracted_details.line_items.{id}.AccountCode": account_code_data['AccountCode']}}
+                        #     )
+                        #     logger.info(f"Created and mapped new item for line item {id}: '{item_desc}' with ItemCode '{new_item_codes['ItemCode']}'")
+                        # else:
+                        #     logger.error(f"Failed to create or map account code for new item: '{item_desc}'")
 
                 time.sleep(1) # Add a 1-second delay to avoid hitting rate limits
 

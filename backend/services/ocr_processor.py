@@ -131,7 +131,7 @@ class OCR_Processor:
                                 4. Each line_item must include hs_code and description; qty, rate, and amount are optional.
                                 5. Always return the result strictly in the following JSON structure.
                                 6. PAN numbers are typically boxed or near labels like 'PAN No.', and follow a 9-digit (Nepal) format.
-                                7. For Dates put - between year, month and day like YYYY-MM-DD, if the date exceeds 2080 then convert the following Bikram Sambat (BS) date to the Gregorian (AD) calendar.
+                                7. For Dates in bill_date put - between year, month and day like YYYY-MM-DD, if the date exceeds 2080 then convert the following Bikram Sambat (BS) date to the Gregorian (AD) calendar.
                                 8. Return  JSON without any markdown formatting or code blocks.
 
                                 Return the standard structured JSON format shown below:
@@ -171,10 +171,10 @@ class OCR_Processor:
                                     "line_items": [
                                         {{
                                         "hs_code": "",
-                                        "products": "", // This is the line items of a bill in a tabular for which can be a product or a service
-                                        "quantity": "",
-                                        "rate": "",
-                                        "amount": ""
+                                        "description": "", // This is the line items of a bill in a tabular for which can be a product or a service
+                                        "quantity": "", // should be in integer
+                                        "rate": "", // should be in float
+                                        "amount": "" // should be in float
                                         }}
                                     ]
                                     }}
