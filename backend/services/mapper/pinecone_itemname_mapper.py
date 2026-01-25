@@ -7,7 +7,7 @@ from pinecone_text.sparse import BM25Encoder
 from typing import TypedDict, Optional, List, Dict
 from dotenv import load_dotenv
 from rapidfuzz import fuzz, process
-from google.oauth2 import service_account
+# from google.oauth2 import service_account
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 import sys
@@ -129,16 +129,16 @@ class PineconeConfig:
 pinecone_config = PineconeConfig()
 
 
-credentials = service_account.Credentials.from_service_account_file(
-    settings.GOOGLE_APPLICATION_CREDENTIALS.get_secret_value(),
-    scopes=["https://www.googleapis.com/auth/cloud-platform"],
-)
+# credentials = service_account.Credentials.from_service_account_file(
+#     settings.GOOGLE_APPLICATION_CREDENTIALS.get_secret_value(),
+#     scopes=["https://www.googleapis.com/auth/cloud-platform"],
+# )
 
 
 model = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash-lite",
     project=settings.GOOGLE_CLOUD_PROJECT.get_secret_value(),
-    credentials=credentials,
+    # credentials=credentials,
     location=settings.GOOGLE_CLOUD_LOCATION,
 )
 

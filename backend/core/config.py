@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     GOOGLE_CLOUD_PROJECT: SecretStr
     GOOGLE_CLOUD_LOCATION: str
-    GOOGLE_APPLICATION_CREDENTIALS: SecretStr
+    # GOOGLE_APPLICATION_CREDENTIALS: SecretStr
 
     model_config = SettingsConfigDict(
         env_file=".env",
