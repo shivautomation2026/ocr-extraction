@@ -6,9 +6,8 @@ vendor ref. no,opch,NumAtCard
 transaction type,opch,GSTTranTyp
 no.,opch,Series
 document number,opch,DocNum
-posting date,opch,DocDate
-due date,opch,DocDueDate
-document date,opch,TaxDate
+posting_date,opch,DocDate
+document_date,opch,TaxDate
 nepali miti,opch,U_NPMI
 lc no,opch,U_LC_NO
 ,,

@@ -7,7 +7,7 @@ from pinecone_text.sparse import BM25Encoder
 from typing import TypedDict, Optional, List, Dict
 from dotenv import load_dotenv
 from rapidfuzz import fuzz, process
-# from google.oauth2 import service_account
+from google.oauth2 import service_account
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 import sys

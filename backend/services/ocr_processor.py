@@ -1,4 +1,5 @@
 import os
+import datetime
 import json
 from mistralai import Mistral
 from dotenv import load_dotenv
@@ -39,7 +40,7 @@ class OCR_Processor:
         self.client = Mistral(api_key=api_key)
         self.ocr_model = "mistral-ocr-latest"
         # self.gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        self.llm = ChatGoogleGenerativeAI(temperature=0, model="gemini-2.5-flash-lite", api_key=settings.GOOGLE_API_KEY, max_tokens=None, timeout=None, max_retries=2)
+        self.llm = ChatGoogleGenerativeAI(model = 'gemini-2.5-flash-lite', temperature=0,project=settings.GOOGLE_CLOUD_PROJECT.get_secret_value(), location=settings.GOOGLE_CLOUD_LOCATION)
         self.model = "mistral-small-latest"
         logger.info(f"OCR_Processor initialized with model: {self.ocr_model} {self.llm.model}") 
 
@@ -152,6 +153,7 @@ class OCR_Processor:
                                     }},
                                     "invoice_details": {{
                                         "bill_number": "",
+                                        "posting_date": "", // Current date is {datetime.date.today().strftime("%Y-%m-%d")}
                                         "bill_date": "",
                                         "nepali_miti": "", // This is the date in nepali calendar if available
                                         "mode_of_payment": "",
@@ -171,7 +173,7 @@ class OCR_Processor:
                                     "line_items": [
                                         {{
                                         "hs_code": "",
-                                        "description": "", // This is the line items of a bill in a tabular for which can be a product or a service
+                                        "description": "", // This is the line items of a bill in a tabular for which can be a product or a service, if there is no description do not include this item in the list
                                         "quantity": "", // should be in integer
                                         "rate": "", // should be in float
                                         "amount": "" // should be in float

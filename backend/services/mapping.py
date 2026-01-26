@@ -28,7 +28,7 @@ class AccountCode(BaseModel):
 class Mapper:
     def __init__(self):
         self.sap_client = SAPClient()
-        self.gemini_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        self.gemini_client = genai.Client(vertexai=True, project=settings.GOOGLE_CLOUD_PROJECT.get_secret_value(), location=settings.GOOGLE_CLOUD_LOCATION)
         self.sap_client.save_items_to_csv()
         self.sap_client.save_item_groups_to_csv()
         self.sap_client.save_business_partners()
@@ -150,6 +150,21 @@ class Mapper:
                 item_desc = item.get('description')
                 if not item_desc:
                     logger.warning(f"No product description found for line item {id}")
+                    collection.update_one(
+                        {"uid": document_uid},
+                        {
+                            "$pull": {
+                                "extracted_details.line_items": {
+                                    "$or": [
+                                        {"description": {"$in": [None, ""]}},
+                                        {"hs_code": {"$in": [None, ""]}},
+                                        {"quantity": {"$in": [None, "", "0", "0.00", 0, 0.0]}},
+                                        {"amount": {"$in": [None, "", "0", "0.00", 0, 0.0]}},
+                                    ]
+                                }
+                            }
+                        }
+                    )
                     continue
 
                 if not item_code:
