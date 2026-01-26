@@ -42,7 +42,15 @@ except Exception as e:
     logger.error(f"FATAL: Failed to configure Gemini client: {e}")
     client = None
 
-item_mapper = Mapper()
+# Use lazy initialization to avoid blocking startup
+item_mapper = None
+
+def get_mapper():
+    """Lazy initialization of Mapper to avoid blocking server startup"""
+    global item_mapper
+    if item_mapper is None:
+        item_mapper = Mapper()
+    return item_mapper
 
 @router.get("/get-mappings/{document_uid}", summary="Get field mappings", description="Retrieve field mappings for a given document type.")
 async def get_field_mappings(document_uid: int):
@@ -50,10 +58,14 @@ async def get_field_mappings(document_uid: int):
         raise HTTPException(status_code=503, detail="Mapping service is unavailable: CSV file not loaded.")
     if client is None:
         raise HTTPException(status_code=503, detail="Mapping service is unavailable: AI client not configured.")
+    
+    # Get mapper instance (lazy initialization)
+    mapper = get_mapper()
+    
     # try:
-    item_mapper.find_similar_vendor(document_uid)
+    mapper.find_similar_vendor(document_uid)
 
-    item_mapper.map_items_to_codes(document_uid)
+    mapper.map_items_to_codes(document_uid)
     try:
         document_json = collection.find_one({"uid": document_uid}, {"_id": 0, "extracted_details": 1})
         if not document_json:
