@@ -52,7 +52,7 @@ async def upload_file(request: Request, file_list: list[UploadFile], prompt: str
             
             result = ocr_client.process_file(file_path, prompt or "")
             total_uploads = collection.count_documents({"file_name": {"$exists":True}})
-
+            
             if prompt:
                 structure = {
                     "file_name": file.filename,

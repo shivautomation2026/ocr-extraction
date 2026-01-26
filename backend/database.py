@@ -8,11 +8,11 @@ load_dotenv()
 mongodb_uri = settings.MONGODB_URI
 
 client = MongoClient(mongodb_uri)
-db = client["ocr_prompts"]
-collection = db["prompts"]
+db = client["sap_ocr"]
+collection = db["documents"]
     
-if "prompts" not in db.list_collection_names():
-    db.create_collection("prompts")
+if "documents" not in db.list_collection_names():
+    db.create_collection("documents")
 
 def add_default_prompt(prompt):
     if collection.count_documents({"default_type": "pdf"}) == 0:

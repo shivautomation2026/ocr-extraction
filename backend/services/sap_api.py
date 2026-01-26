@@ -45,15 +45,12 @@ class SAPClient:
                 print(f"Login request failed: {e}")
                 exit(1)
 
-        self.save_item_groups_to_csv()
-        
     def save_items_to_csv(self):
         all_items = []
         item_url_req = f'{self.base_url}Items/?$select=ItemCode,ItemName,UoMGroupEntry,InventoryUoMEntry&$orderby=ItemName'
         
         while item_url_req:
             try:
-                logger.info("Fetching items from SAP...")
                 response = self.session.get(item_url_req, verify=False)
                 items = response.json()['value']
                 for item in items:
@@ -63,7 +60,6 @@ class SAPClient:
                                     'InventoryUoMEntry': item['InventoryUoMEntry']
                                 })
                 if 'odata.nextLink' in response.json():
-                    logger.info("Fetching next page of items...")
                     next_link = response.json()['odata.nextLink']
                     item_url_req = f'{self.base_url}{next_link}'
                 else:
@@ -72,6 +68,7 @@ class SAPClient:
                 logger.error(f"Error fetching items: {e}")
                 raise
             
+        logger.info("Successfully fetched all pages of Items.")
         items_df = pd.DataFrame(all_items)
         items_df.to_csv("backend/assets/item_list.csv", index=False)
         logger.info("Items saved as csv")
@@ -85,7 +82,6 @@ class SAPClient:
         while item_group_res:
             try:
                 response = self.session.get(item_group_res, verify=False)
-                logger.info("Fetching item groups from SAP...")
                 group_values = response.json()['value']
                 for num in group_values:
                     item_group_list.append({
@@ -93,14 +89,14 @@ class SAPClient:
                         "GroupName": num["GroupName"]
                     })
                 if 'odata.nextLink' in response.json():
-                    logger.info("Fetching next page of item groups...")
                     next_link = response.json()['odata.nextLink']
                     item_group_res = f"{self.base_url}{next_link}"
                 else:
                     break
             except Exception as e:
-                logger.error(f"Error fetching item groups: {e}")
+                logger.error(f"Error fetching Item Groups: {e}")
                 raise
+        logger.info("Successfully fetched all pages of ItemGroups.")
         
         item_group_df = pd.DataFrame(item_group_list)
         item_group_df.to_csv('backend/assets/item_groups.csv', index=False)
@@ -115,8 +111,6 @@ class SAPClient:
         while uom_group_url:
             try:
                 response = self.session.get(uom_group_url, verify=False)
-                logger.info("Fetching UoM groups from SAP...")
-
                 if 'value' in response.json():
                     uom_group_values = response.json()['value']
                     for num in uom_group_values:
@@ -127,7 +121,6 @@ class SAPClient:
                     })
                     
                     if 'odata.nextLink' in response.json():
-                        logger.info("Fetching next page of UoM groups...")
                         next_link = response.json()['odata.nextLink']
                         uom_group_url = f"{self.base_url}{next_link}"
                     else:
@@ -138,10 +131,11 @@ class SAPClient:
             except Exception as e:
                 logger.error(f"Error fetching UoM groups: {e}")
                 raise
+        logger.info("Successfully fetched all pages of UoM Groups.") 
+
         uom_group_df = pd.DataFrame(uom_group_list)
         uom_group_df.to_csv('backend/assets/uom_groups.csv', index=False)
-        logger.info("UoM groups saved as csv")
-
+        logger.info("UoM Groups saved as csv")
         return uom_group_df
     
     def save_account_codes(self):
@@ -162,7 +156,6 @@ class SAPClient:
                         })
                     
                     if 'odata.nextLink' in response.json():
-                        logger.info("Fetching next page of account codes...")
                         next_link = response.json()['odata.nextLink']
                         account_code_url = f"{self.base_url}{next_link}"
                     else:
@@ -171,12 +164,13 @@ class SAPClient:
                     break
                 
             except Exception as e:
-                logger.error(f"Error fetching account codes: {e}")
+                logger.error(f"Error fetching Account Codes: {e}")
                 raise
+        logger.info("Successfully fetched all pages of Account Codes.")
+
         account_code_df = pd.DataFrame(account_code_list)
         account_code_df.to_csv('backend/assets/account_codes.csv', index=False)
-        logger.info("Account codes saved as csv")
-
+        logger.info("Account Codes saved as csv")
         return account_code_df
     
     def save_cost_codes(self):
@@ -186,7 +180,6 @@ class SAPClient:
         while cost_code_url:
             try:
                 response = self.session.get(cost_code_url, verify=False)
-                logger.info("Fetching cost codes from SAP...")
 
                 if 'value' in response.json():
                     cost_code_values = response.json()['value']
@@ -197,7 +190,6 @@ class SAPClient:
                         })
 
                     if 'odata.nextLink' in response.json():
-                        logger.info("Fetching next page of cost codes...")
                         next_link = response.json()['odata.nextLink']
                         cost_code_url = f"{self.base_url}{next_link}"
                     else:
@@ -206,11 +198,13 @@ class SAPClient:
                     break
 
             except Exception as e:
-                logger.error(f"Error fetching cost codes: {e}")
+                logger.error(f"Error fetching Cost Codes: {e}")
                 raise
+        logger.info("Successfully fetched all pages of Cost Codes.")
+
         cost_code_df = pd.DataFrame(cost_code_list)
         cost_code_df.to_csv('backend/assets/cost_codes.csv', index=False)
-        logger.info("Cost codes saved as csv")
+        logger.info("Cost Codes saved as csv")
 
         return cost_code_df
     
@@ -221,8 +215,6 @@ class SAPClient:
         while bp_url:
             try:
                 response = self.session.get(bp_url, verify=False)
-                logger.info("Fetching business partners from SAP...")
-
                 if 'value' in response.json():
                     bp_values = response.json()['value']
                     for num in bp_values:
@@ -232,7 +224,6 @@ class SAPClient:
                         })
 
                     if 'odata.nextLink' in response.json():
-                        logger.info("Fetching next page of business partners...")
                         next_link = response.json()['odata.nextLink']
                         bp_url = f"{self.base_url}{next_link}"
                     else:
@@ -243,10 +234,12 @@ class SAPClient:
             except Exception as e:
                 logger.error(f"Error fetching business partners: {e}")
                 raise
+        logger.info("Successfully fetched all pages of Business Partners. (Vendors only)")
+
         bp_df = pd.DataFrame(bp_list)
         bp_df.dropna(inplace=True)
         bp_df.to_csv('backend/assets/vendor_list.csv', index=False)
-        logger.info("Business partners saved as csv")
+        logger.info("Business Partners saved as csv")
 
         return bp_df
     

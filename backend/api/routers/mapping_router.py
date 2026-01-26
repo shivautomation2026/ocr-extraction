@@ -1,13 +1,14 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
+import datetime
 from backend.database import collection
 import logging
 import pandas as pd
 import json
-import google.generativeai as genai
+from google import genai
 from backend.core.config import settings
 from backend.services.mapping import Mapper
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/mapping", tags=["Field Mapping"])
 
@@ -21,7 +22,7 @@ class DocumentLine(BaseModel):
 
 class SAPFields(BaseModel):
     CardCode: str
-    DocDate: str
+    DocDate: str 
     DocumentLines: list[DocumentLine]
 
 try:
@@ -35,12 +36,11 @@ except FileNotFoundError:
 try:
     if not settings.GOOGLE_API_KEY:
         raise ValueError("GOOGLE_API_KEY is not set in the environment.")
-    genai.configure(api_key=settings.GOOGLE_API_KEY)
-    gemini_model = genai.GenerativeModel('gemini-2.5-flash-lite')
-    logger.info("Successfully configured Gemini client with model 'gemini-2.0-flash'.")
+    client = genai.Client(vertexai=True, project=settings.GOOGLE_CLOUD_PROJECT.get_secret_value(), location=settings.GOOGLE_CLOUD_LOCATION)
+    logger.info("Successfully configured Gemini client with model 'gemini-2.5-flash'.")
 except Exception as e:
     logger.error(f"FATAL: Failed to configure Gemini client: {e}")
-    gemini_model = None
+    client = None
 
 item_mapper = Mapper()
 
@@ -48,7 +48,7 @@ item_mapper = Mapper()
 async def get_field_mappings(document_uid: int):
     if cleaned_df is None:
         raise HTTPException(status_code=503, detail="Mapping service is unavailable: CSV file not loaded.")
-    if gemini_model is None:
+    if client is None:
         raise HTTPException(status_code=503, detail="Mapping service is unavailable: AI client not configured.")
     # try:
     item_mapper.find_similar_vendor(document_uid)
@@ -84,30 +84,31 @@ async def get_field_mappings(document_uid: int):
         3. For each item in line_items:
            - If "ItemCode" exists in the line item, use it directly
            - If "ItemCode" doesn't exist but "product" or "description" exists, map it using the ItemCode field
-           - Include the quantity in integer format.
-           - Include the unit price in float format.
+           - Include the Quantity in float format.
+           - Include the UnitPrice in float format.
         4. Ignore any mention of table names — they are not needed.
         5. Use the "sap field name" from the CSV as the output key.
         6. If "vat_percentage" exists and is "13", set "TaxCode" to "VAT13".
            - Otherwise, set "TaxCode" to "VAT13".
         7. If "mode_of_payment" exists in incoming json then refer to it as "transaction type"
-        8. If any mapped field is missing in the JSON, include it with an empty string.
-        9. Return the result as a single flat JSON object.
-        10. Do NOT include markdown, code fences (```), comments, or any text outside of the final JSON object.
+        8. DocDate is {datetime.date.today().strftime("%Y-%m-%d")}
+        9. If any mapped field is missing in the JSON, include it with an empty string.
+        10. Return the result as a single flat JSON object.
+        11. Do NOT include markdown, code fences (```), comments, or any text outside of the final JSON object.
 
         ### Output format (STRICT JSON)
-        Return output as plain JSON like this:
+        Return output as plain JSON like this example:
         {{
         "CardName": "...",
         "CardCode": "...",
-        "NumAtCard": "...",
+        "DocDate": "...",
         "DocumentLines": [
         {{
             "ItemCode": "EL00347",
             "Description": "AUXILLARY CONTACT BLOCK 3 RT 2015 HA",
-            "Quantity": "100",
+            "Quantity": 100, // in float
             "TaxCode": "VAT13",
-            "UnitPrice": "50",
+            "UnitPrice": 50, // in float
         }}
     ]
         }}
@@ -115,9 +116,10 @@ async def get_field_mappings(document_uid: int):
 
         """
         logger.info("Generating content with Gemini...")
-        response = gemini_model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents = prompt,
+            config=genai.types.GenerateContentConfig(
                 response_mime_type="application/json",
                 temperature=0.1
             )
