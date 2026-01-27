@@ -7,7 +7,7 @@ from pinecone_text.sparse import BM25Encoder
 from typing import TypedDict, Optional, List, Dict
 from dotenv import load_dotenv
 from rapidfuzz import fuzz, process
-from google.oauth2 import service_account
+# from google.oauth2 import service_account
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 import sys
@@ -87,11 +87,11 @@ class PineconeConfig:
     """Configuration for Pinecone connection."""
     
     def __init__(self):
-        self.api_key = os.getenv("PINECONE_API_KEY")
-        self.index_name = os.getenv("PINECONE_INDEX_NAME", "sap-items")
-        self.embedding_model = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-mpnet-base-v2")
-        self.top_k = int(os.getenv("TOP_K", "25"))
-        self.alpha = float(os.getenv("ALPHA", "0.2"))  
+        self.api_key = settings.PINECONE_API_KEY
+        self.index_name = settings.PINECONE_INDEX_NAME
+        self.embedding_model = settings.EMBEDDING_MODEL
+        self.top_k = settings.TOP_K
+        self.alpha = settings.ALPHA 
         
         if not self.api_key:
             logger.warning("PINECONE_API_KEY not set. Pinecone search will not work.")
@@ -129,16 +129,16 @@ class PineconeConfig:
 pinecone_config = PineconeConfig()
 
 
-credentials = service_account.Credentials.from_service_account_file(
-    settings.GOOGLE_APPLICATION_CREDENTIALS.get_secret_value(),
-    scopes=["https://www.googleapis.com/auth/cloud-platform"],
-)
+# credentials = service_account.Credentials.from_service_account_file(
+#     settings.GOOGLE_APPLICATION_CREDENTIALS.get_secret_value(),
+#     scopes=["https://www.googleapis.com/auth/cloud-platform"],
+# )
 
 
 model = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash-lite",
     project=settings.GOOGLE_CLOUD_PROJECT.get_secret_value(),
-    credentials=credentials,
+    # credentials=credentials,
     location=settings.GOOGLE_CLOUD_LOCATION,
 )
 
@@ -697,8 +697,8 @@ def process_ocr_items(ocr_result: dict) -> List[Dict]:
 if __name__ == "__main__":
     # Test with sample items
     test_items = [
-        {"item_name": "SPRING Washer B-8", "vendor_name": "Hardware Supplies"},
-        {"item_name": "billet small length", "vendor_name": "Steel Corp"},
+        {"item_name": "heavy scrap", "vendor_name": "surya enterprises"},
+        {"item_name": "gl side slit", "vendor_name": "surya enterprises"},
 
     ]
     
