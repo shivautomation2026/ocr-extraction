@@ -1,3 +1,4 @@
+from urllib import response
 from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
@@ -15,7 +16,8 @@ import os
 
 # Add backend to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from core.config import settings
+from backend.core.config import settings
+from backend.utils.cost_tracker import LLMCostTracker, extract_langchain_usage
 import csv
 import yaml
 import logging
@@ -136,11 +138,14 @@ pinecone_config = PineconeConfig()
 
 
 model = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash-lite",
-    project=settings.GOOGLE_CLOUD_PROJECT.get_secret_value(),
+    model=settings.GEMINI_MODEL_NAME,
+    project=settings.GOOGLE_CLOUD_PROJECT,
     # credentials=credentials,
     location=settings.GOOGLE_CLOUD_LOCATION,
 )
+
+# Cost tracker for pinecone mapper LLM operations
+mapper_cost_tracker = LLMCostTracker(model_name=settings.GEMINI_MODEL_NAME)
 
 def get_namespaces_from_categories(categories: List[str]) -> List[str]:
     """Convert category names to Pinecone namespace names."""
@@ -195,6 +200,14 @@ def generate_item_description(state: PineconeMapperState) -> dict:
         HumanMessage(content=user_prompt)
     ])
     
+    usage = extract_langchain_usage(response)
+
+    mapper_cost_tracker.track_llm_usage(
+        input_tokens=usage["input_tokens"],
+        output_tokens=usage["output_tokens"],
+        operation="generate_item_description"
+    )
+
     logger.info(f"Generated description for '{item_name}'")
     
     return {
@@ -312,6 +325,14 @@ def validate_fuzzy_match_with_llm(state: PineconeMapperState) -> str:
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_prompt)
     ])
+
+    usage = extract_langchain_usage(response)
+
+    mapper_cost_tracker.track_llm_usage(
+        input_tokens=usage["input_tokens"],
+        output_tokens=usage["output_tokens"],
+        operation="validate_fuzzy_match"
+    )
     
     result = response.content.strip().lower()
     logger.info(f"LLM validation of fuzzy match '{item_name}' -> '{fuzzy_item_name}': {result}")
@@ -351,6 +372,14 @@ def categorize_item(state: PineconeMapperState) -> dict:
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_prompt)
     ])
+
+    usage = extract_langchain_usage(response)
+
+    mapper_cost_tracker.track_llm_usage(
+        input_tokens=usage["input_tokens"],
+        output_tokens=usage["output_tokens"],
+        operation="categorize_item"
+    )
     
     # Parse categories from response
     categories = parse_categories_from_llm_response(response.content)
@@ -502,6 +531,14 @@ def match_with_llm_from_pinecone(state: PineconeMapperState) -> dict:
         HumanMessage(content=user_prompt)
     ])
     
+    usage = extract_langchain_usage(response)
+
+    mapper_cost_tracker.track_llm_usage(
+        input_tokens=usage["input_tokens"],
+        output_tokens=usage["output_tokens"],
+        operation="match_with_llm_from_pinecone"
+    )
+
     matched_code = response.content.strip()
     
     # Clean up the response - extract just the code
@@ -589,6 +626,16 @@ graph.add_edge("search_pinecone", "match_with_llm")
 graph.add_edge("match_with_llm", END)
 
 app = graph.compile()
+
+
+def get_mapper_costs() -> Dict:
+    """Get the accumulated LLM costs from the mapper."""
+    return mapper_cost_tracker.get_total_usage()
+
+
+def reset_mapper_costs():
+    """Reset the mapper cost tracker for a new session."""
+    mapper_cost_tracker.reset()
 
 
 # processing items

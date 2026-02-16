@@ -11,3 +11,4 @@ __pycache__/
 backend/ipynb
 backend/services/mapping.ipynb
 shivautomation-*.json
+superb-*.json

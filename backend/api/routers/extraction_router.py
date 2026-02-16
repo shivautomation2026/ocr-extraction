@@ -14,8 +14,6 @@ from backend.core.config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-ocr_client = OCR_Processor()
-
 router = APIRouter(prefix="/extract", tags=["Text Extraction"])
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -31,6 +29,8 @@ def format_datetime(dt):
 @router.post("/", summary = "Upload and extract text from files", description="Upload up to 5 PDF files and optionally provide a custom prompt for text extraction. The extracted text and structured content will be returned in the response.")
 async def upload_file(request: Request, file_list: list[UploadFile], prompt: str = Form(None)):
     try:
+        # Create a new OCR client for each request to get fresh cost tracker
+        ocr_client = OCR_Processor()
         save_as_excel = False
         # Limit uploads to maximum 5 files
         if len(file_list) > 5:
@@ -52,6 +52,8 @@ async def upload_file(request: Request, file_list: list[UploadFile], prompt: str
             
             result = ocr_client.process_file(file_path, prompt or "")
             total_uploads = collection.count_documents({"file_name": {"$exists":True}})
+
+            llm_cost_data = ocr_client.cost_tracker.get_total_usage()
             
             if prompt:
                 structure = {
@@ -61,6 +63,14 @@ async def upload_file(request: Request, file_list: list[UploadFile], prompt: str
                     "prompt": prompt,
                     "raw_text": result.extracted_text,
                     "extracted_details": result.content,
+                    "llm_cost_tracking": {
+                        "model": llm_cost_data["model"],
+                        "total_input_tokens": llm_cost_data["total_input_tokens"],
+                        "total_output_tokens": llm_cost_data["total_output_tokens"],
+                        "total_cost": llm_cost_data["total_cost"],
+                        "usage_records": ocr_client.cost_tracker.usage_records,
+                        "tracked_at": format_datetime(datetime.now())
+                    },
                     "uploaded_at": format_datetime(datetime.now())
                 }
             else:
@@ -70,11 +80,19 @@ async def upload_file(request: Request, file_list: list[UploadFile], prompt: str
                     "prompt_type": "default_prompt",
                     "raw_text": result.extracted_text,
                     "extracted_details": result.content,
+                    "llm_cost_tracking": {
+                        "model": llm_cost_data["model"],
+                        "total_input_tokens": llm_cost_data["total_input_tokens"],
+                        "total_output_tokens": llm_cost_data["total_output_tokens"],
+                        "total_cost": llm_cost_data["total_cost"],
+                        "usage_records": ocr_client.cost_tracker.usage_records,
+                        "tracked_at": format_datetime(datetime.now())
+                    },
                     "uploaded_at": format_datetime(datetime.now())
                 }
             inserted_doc = collection.insert_one(structure)
             document_ids.append(inserted_doc.inserted_id)
-            logger.info(inserted_doc.inserted_id)
+            ocr_client.cost_tracker.reset()
             
             os.remove(file_path)
 

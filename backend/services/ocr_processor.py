@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from ..models import OCRResponse
 from ..database import  add_default_prompt
 from ..core.config import settings
+from ..utils.cost_tracker import LLMCostTracker, extract_langchain_usage
 import logging
 # from google import genai 
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -40,8 +41,9 @@ class OCR_Processor:
         self.client = Mistral(api_key=api_key)
         self.ocr_model = "mistral-ocr-latest"
         # self.gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        self.llm = ChatGoogleGenerativeAI(model = 'gemini-2.5-flash-lite', temperature=0,project=settings.GOOGLE_CLOUD_PROJECT.get_secret_value(), location=settings.GOOGLE_CLOUD_LOCATION)
+        self.llm = ChatGoogleGenerativeAI(model = settings.GEMINI_MODEL_NAME, temperature=0,project=settings.GOOGLE_CLOUD_PROJECT, location=settings.GOOGLE_CLOUD_LOCATION)
         self.model = "mistral-small-latest"
+        self.cost_tracker = LLMCostTracker(model_name=settings.GEMINI_MODEL_NAME)
         logger.info(f"OCR_Processor initialized with model: {self.ocr_model} {self.llm.model}") 
 
     def extract_raw_text_from_pdf(self, file_path):
@@ -74,6 +76,12 @@ class OCR_Processor:
                 include_image_base64 = True
             )
 
+            self.cost_tracker.track_fixed_cost(
+                cost=0.002,
+                operation='ocr_extraction',
+                model_name=self.ocr_model
+            )
+
             # messages = [
             #     {
             #         "role": "user",
@@ -96,9 +104,7 @@ class OCR_Processor:
             # )
 
             logger.info("Extracted text from PDF using OCR model")
-
-            # return chat_response.choices[0].message.content
-            # print(ocr_response.pages[0].markdown)
+            
             return ocr_response.pages[0].markdown
 
         except Exception as e:
@@ -194,7 +200,15 @@ class OCR_Processor:
                 }
             ]
             
-            output = self.llm.invoke(prompt_template)  
+            output = self.llm.invoke(prompt_template)
+
+            usage = extract_langchain_usage(output)
+            self.cost_tracker.track_llm_usage(
+                input_tokens=usage["input_tokens"],
+                output_tokens=usage["output_tokens"],
+                operation="extract_vendor_details",
+                model_name=self.llm.model
+            )
 
             # chat_response = self.gemini_client.models.generate_content(
             #     model="gemini-2.5-flash",

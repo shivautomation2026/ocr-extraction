@@ -11,7 +11,8 @@ from google import genai
 import re
 from backend.services.sap_api import SAPClient
 import time
-from backend.services.mapper.pinecone_itemname_mapper import app
+import datetime
+from backend.services.mapper.pinecone_itemname_mapper import app, mapper_cost_tracker, get_mapper_costs, reset_mapper_costs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class AccountCode(BaseModel):
 class Mapper:
     def __init__(self):
         self.sap_client = SAPClient()
-        self.gemini_client = genai.Client(vertexai=True, project=settings.GOOGLE_CLOUD_PROJECT.get_secret_value(), location=settings.GOOGLE_CLOUD_LOCATION)
+        self.gemini_client = genai.Client(vertexai=True, project=settings.GOOGLE_CLOUD_PROJECT, location=settings.GOOGLE_CLOUD_LOCATION)
         self.sap_client.save_items_to_csv()
         self.sap_client.save_item_groups_to_csv()
         self.sap_client.save_business_partners()
@@ -239,6 +240,76 @@ class Mapper:
 
                 time.sleep(1) # Add a 1-second delay to avoid hitting rate limits
 
+            # Save pinecone mapper LLM costs to MongoDB after processing all items
+            mapper_costs = get_mapper_costs()
+            if mapper_costs["total_input_tokens"] > 0 or mapper_costs["total_output_tokens"] > 0:
+                now = datetime.datetime.now()
+                day = now.strftime("%Y-%m-%d")
+                month = now.strftime("%Y-%m")
+
+                existing_doc = collection.find_one({"uid": document_uid})
+                if existing_doc and "llm_cost_tracking" in existing_doc:
+
+
+                    collection.update_one(
+                        {"uid": document_uid},
+                        {
+                            "$inc":{
+                                "llm_cost_tracking.total_input_tokens": mapper_costs["total_input_tokens"],
+                                "llm_cost_tracking.total_output_tokens": mapper_costs["total_output_tokens"],
+                                "llm_cost_tracking.total_cost": mapper_costs["total_cost"]
+                            },
+                            "$push":{
+                                "llm_cost_tracking.usage_records": {"$each": mapper_costs["usage_records"]},                                                           
+                            },
+                            "$set":{
+                                "llm_cost_tracking.last_updated": now.isoformat()
+                            }}
+                        )
+                    logger.info(f"Updated LLM cost tracking for document {document_uid}. Mapper cost: ${mapper_costs['total_cost']:.6f}")
+                else:
+                    mapper_cost_tracker.save_to_mongodb(document_uid)
+                    logger.info(f"Created LLM cost tracking for document {document_uid}. Mapper cost: ${mapper_costs['total_cost']:.6f}")
+
+                db = collection.database
+                aggregation_collection = db["llm_cost_aggregation"]
+
+                aggregations = [
+                    ("daily", f"daily_{day}", day),
+                    ("monthly", f"monthly_{month}", month),
+                    ("overall","overall", None)
+                ]
+
+                for agg_name, agg_id, agg_date in aggregations:
+                    update_doc = {
+                        "$inc":{
+                            "total_input_tokens": mapper_costs["total_input_tokens"],
+                            "total_output_tokens": mapper_costs["total_output_tokens"],
+                            "total_cost": mapper_costs["total_cost"]
+                        },
+                        "$set":{
+                            "agg_type": agg_name,
+                            "updated_at": now
+                        },
+                        "$setOnInsert":{
+                            "created_at": now
+                        }
+                    }
+
+                    if agg_date:
+                        update_doc["$set"]["agg_date"] = agg_date
+
+
+                    aggregation_collection.update_one(
+                    {"uid": agg_id},
+                    update_doc,
+                    upsert=True
+                    )
+                    
+                logger.info(f"Updated aggregation collection with mapper costs")
+
+                reset_mapper_costs()
+
         except Exception as e:
             logger.error(f"Error in map_items_to_codes: {e}")
             
@@ -246,7 +317,7 @@ class Mapper:
         try:
             logger.info(f"No item found. Creating new item for description: {item_description}")
             response = self.gemini_client.models.generate_content(
-                model='gemini-2.5-flash-lite',
+                model=settings.GEMINI_MODEL_NAME,
                 contents=f"""
                     You are given:
                     1. An item description: "{item_description}"
@@ -289,7 +360,7 @@ class Mapper:
     def map_costing_code(self, item_name: str):
         try:
             response = self.gemini_client.models.generate_content(
-                model='gemini-2.5-flash-lite',
+                model=settings.GEMINI_MODEL_NAME,
                 contents=f"""I have a list of cost_center_code, const_center_name, account_code, account_name: {json.dumps(self.costing_code)}. Please map the item name '{item_name}' to the appropriate cost_center_code and account code from the provided cost_center_name and account_name. Make references close as much as you can. Generate a JSON object with the item name and the corresponding cost_center_code and account_code. Give me in a plain json object without any markdown format. Do not hallucinate.
                 Example:
                 {
@@ -316,7 +387,7 @@ class Mapper:
     def map_account_codes(self, item_name:str):
         try:
             response = self.gemini_client.models.generate_content(
-                model="gemini-2.5-flash-lite",
+                model=settings.GEMINI_MODEL_NAME,
                 contents=f"""
                     You are given a list of account records containing 'AccountCode' and 'Name' fields:
                     {self.account_codes_string}

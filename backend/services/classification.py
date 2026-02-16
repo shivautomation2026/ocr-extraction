@@ -24,7 +24,7 @@ class Classifier:
         if not api_key:
             logger.error("GOOGLE_API_KEY not found in environment variables")
             raise ValueError("GOOGLE_API_KEY not found in environment variables")
-        self.client = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite")
+        self.client = ChatGoogleGenerativeAI(model=settings.GEMINI_MODEL_NAME)
         logger.info("Gemini model initialized.")
     
     def parse_invoice_json(self, raw_json_string: str) -> Optional[Dict]:

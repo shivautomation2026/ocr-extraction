@@ -8,6 +8,7 @@ import json
 from google import genai
 from backend.core.config import settings
 from backend.services.mapping import Mapper
+from backend.utils.cost_tracker import LLMCostTracker, extract_langchain_usage
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/mapping", tags=["Field Mapping"])
@@ -36,8 +37,8 @@ except FileNotFoundError:
 try:
     if not settings.GOOGLE_API_KEY:
         raise ValueError("GOOGLE_API_KEY is not set in the environment.")
-    client = genai.Client(vertexai=True, project=settings.GOOGLE_CLOUD_PROJECT.get_secret_value(), location=settings.GOOGLE_CLOUD_LOCATION)
-    logger.info("Successfully configured Gemini client with model 'gemini-2.5-flash'.")
+    client = genai.Client(vertexai=True, project=settings.GOOGLE_CLOUD_PROJECT, location=settings.GOOGLE_CLOUD_LOCATION)
+    logger.info("Successfully configured Gemini client with model settings.")
 except Exception as e:
     logger.error(f"FATAL: Failed to configure Gemini client: {e}")
     client = None
@@ -117,7 +118,7 @@ async def get_field_mappings(document_uid: int):
         """
         logger.info("Generating content with Gemini...")
         response = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
+            model=settings.GEMINI_MODEL_NAME,
             contents = prompt,
             config=genai.types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -125,14 +126,90 @@ async def get_field_mappings(document_uid: int):
             )
         )
 
+        # token extraction for genai SDK  prompt_token_count/candidates_token_count
+        usage = extract_langchain_usage(response)
+        
+        mapping_cost_tracker = LLMCostTracker(model_name=settings.GEMINI_MODEL_NAME)
+        mapping_cost_tracker.track_llm_usage(
+            input_tokens=usage["input_tokens"],
+            output_tokens=usage["output_tokens"],
+            operation="field_mapping"
+        )
+        
+        # Update existing cost tracking in MongoDB (append to existing)
+        now = datetime.datetime.now()
+        day = now.strftime("%Y-%m-%d")
+        month = now.strftime("%Y-%m")
+        
+        existing_doc = collection.find_one({"uid": document_uid}, {"llm_cost_tracking": 1})
+        if existing_doc and "llm_cost_tracking" in existing_doc:
+
+            collection.update_one(
+                {"uid": document_uid},
+                {
+                    "$inc":{
+                        "llm_cost_tracking.total_input_tokens": usage["input_tokens"],
+                        "llm_cost_tracking.total_output_tokens": usage["output_tokens"],
+                        "llm_cost_tracking.total_cost": mapping_cost_tracker.total_cost
+                    },
+                    "$push":{
+                        "llm_cost_tracking.usage_records": {"$each": mapping_cost_tracker.usage_records}
+                    },
+                    "$set":{
+                        "llm_cost_tracking.last_updated": now.isoformat()
+                }}
+            )
+            logger.info(f"Updated LLM cost tracking for document {document_uid}. Mapping cost: ${mapping_cost_tracker.total_cost:.6f}")
+        else:
+            mapping_cost_tracker.save_to_mongodb(document_uid)
+
+        db = collection.database
+        aggregation_collection = db["llm_cost_aggregation"]
+
+        aggregations = [
+            ("daily", f"daily_{day}", day),
+            ("monthly", f"monthly_{month}", month),
+            ("overall","overall", None)
+        ]
+
+        for agg_name, agg_id, agg_date in aggregations:
+            update_doc = {
+                "$inc":{
+                    "total_input_tokens": usage["input_tokens"],
+                    "total_output_tokens": usage["output_tokens"],
+                    "total_cost": mapping_cost_tracker.total_cost,
+                    "document_count": 1
+                },
+                "$set":{
+                    "agg_type": agg_name,
+                    "updated_at": now
+                },
+                "$setOnInsert":{
+                    "created_at": now
+                }
+            }
+
+            if agg_date:
+                update_doc["$set"]["agg_date"] = agg_date
+
+
+            aggregation_collection.update_one(
+                {"uid": agg_id},
+                update_doc,
+                upsert=True
+                )
+            
+        logger.info(f"Updated aggregation collection with field mapping costs")
+
         if not response.text or not response.text.strip():
             logger.error("Gemini API returned an empty response.")
             raise HTTPException(status_code=500, detail="AI model returned an empty response.")
 
         logger.info("Successfully received response from Gemini.")
         mapped_result = json.loads(response.text)
-        
 
+        print ("Mapped Result:", mapped_result)
+        
         return JSONResponse(
             status_code=200,
             content={
