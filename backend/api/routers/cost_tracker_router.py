@@ -1,25 +1,23 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from backend.utils.cost_queries import CostQueries
 from backend.models import CostStatsRequest
-
 
 router = APIRouter(prefix="/cost-tracking", tags=["LLM Cost Tracker"])
 
 @router.get("/stats")
-def get_cost_stats(
-    request: CostStatsRequest):
+def get_cost_stats(params: CostStatsRequest = Depends()):
 
     try:
-        from backend.database import collection
+        cost_queries = CostQueries()
 
-        result = get_cost_stats(
-            collection=collection,
-            scope=request.scope,
-            date=request.date,
-            month=request.month,
-            start_date=request.start_date,
-            end_date=request.end_date,
-            days=request.days,
-            document_id=request.document_id
+        result = cost_queries.get_stats(
+            scope=params.scope,
+            date=params.date,
+            month=params.month,
+            start_date=params.start_date,
+            end_date=params.end_date,
+            days=params.days,
+            document_id=params.document_id
         )
 
         return result

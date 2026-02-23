@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from .api.routers import extraction_router, prompt_router, mapping_router, sap_invoice_router
+from .api.routers import extraction_router, prompt_router, mapping_router, sap_invoice_router, cost_tracker_router
 recent_filename = None
 
 app = FastAPI()
@@ -24,5 +24,5 @@ app.include_router(extraction_router.router)
 app.include_router(prompt_router.router)
 app.include_router(mapping_router.router)
 app.include_router(sap_invoice_router.router)
-
+app.include_router(cost_tracker_router.router)
 
