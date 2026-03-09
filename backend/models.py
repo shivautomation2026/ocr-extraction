@@ -37,3 +37,5 @@ class CostStatsRequest(BaseModel):
             case "document":
                 if not self.document_id:
                     raise ValueError("document_id is required for document scope")
+        
+        return self

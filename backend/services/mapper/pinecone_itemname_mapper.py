@@ -142,6 +142,7 @@ model = ChatGoogleGenerativeAI(
     project=settings.GOOGLE_CLOUD_PROJECT,
     # credentials=credentials,
     location=settings.GOOGLE_CLOUD_LOCATION,
+    vertexai = True
 )
 
 # Cost tracker for pinecone mapper LLM operations

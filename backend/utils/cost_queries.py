@@ -46,10 +46,10 @@ class CostQueries:
         }
 
 
-    def get_overall_stats(self)-> dict:
+    async def get_overall_stats(self)-> dict:
         """Get all time stats of document processed"""
         try:
-            overall_records = self.aggregation_collection.find_one({"uid": "overall"})
+            overall_records = await self.aggregation_collection.find_one({"uid": "overall"})
 
             if not overall_records:
                 logger.warning("No overall stats found")
@@ -61,13 +61,13 @@ class CostQueries:
             raise
 
 
-    def get_daily_stats(self, date: Optional[str] = None) -> dict:
+    async def get_daily_stats(self, date: Optional[str] = None) -> dict:
         """Get daily stats for a specific date or today"""
         try:
             if not date:
                 date = self.now.strftime("%Y-%m-%d")
 
-            daily_records = self.aggregation_collection.find_one({"uid": f"daily_{date}"})
+            daily_records = await self.aggregation_collection.find_one({"uid": f"daily_{date}"})
 
             if not daily_records:
                 logger.warning(f"No daily stats found for date: {date}")
@@ -79,13 +79,13 @@ class CostQueries:
             raise
 
 
-    def get_monthly_stats(self, month: Optional[str] = None) -> dict:
+    async def get_monthly_stats(self, month: Optional[str] = None) -> dict:
         """Get monthly stats for a secific month or current month"""
         try:
             if not month:
                 month =  self.now.strftime("%Y-%m")
 
-            monthly_records = self.aggregation_collection.find_one({"uid": f"monthly_{month}"})
+            monthly_records = await self.aggregation_collection.find_one({"uid": f"monthly_{month}"})
 
             if not monthly_records:
                 logger.warning(f"No monthly stats found for month: {month}")
@@ -97,7 +97,7 @@ class CostQueries:
             raise
 
 
-    def get_range_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None, days: Optional[int] = None ) -> dict:
+    async def get_range_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None, days: Optional[int] = None ) -> dict:
         """Get stats for a specifi date range or last x days"""
         try:
             if days:
@@ -106,7 +106,7 @@ class CostQueries:
             elif not start_date or not end_date:
                 raise ValueError("Provide either start_date and end_date or days")
 
-            range_records = list(self.aggregation_collection.find({
+            range_records = list(await self.aggregation_collection.find({
                 "agg_type":"daily",
                 "agg_date":{
                     "$gte":start_date,
@@ -142,13 +142,13 @@ class CostQueries:
             raise
 
 
-    def get_document_stats(self, document_id: Optional[int] = None) -> dict:
+    async def get_document_stats(self, document_id: Optional[int] = None) -> dict:
         """Get stats for a specific document by id"""
         try:
             if not document_id:
                 raise ValueError("document_id is required")
             
-            document_record = self.llm_cost_collection.find_one(
+            document_record = await self.llm_cost_collection.find_one(
                 {"uid": document_id},
                 {"llm_cost_tracking": 1, "uid": 1}
             )
@@ -176,7 +176,7 @@ class CostQueries:
             raise
 
 
-    def get_stats(self, scope: str, **kwargs) -> dict:
+    async def get_stats(self, scope: str, **kwargs) -> dict:
         """Orchestrator function to get stats according to scope"""
         if scope not in self.VALID_SCOPES:
             raise ValueError(f"Invalid scope: {scope}")
@@ -184,19 +184,19 @@ class CostQueries:
         try:
             match scope:
                 case "overall":
-                    return self.get_overall_stats()
+                    return await self.get_overall_stats()
                 
                 case "daily":
-                    return self.get_daily_stats(date=kwargs.get("date"))
+                    return await self.get_daily_stats(date=kwargs.get("date"))
                 
                 case "monthly":
-                    return self.get_monthly_stats(month=kwargs.get("month"))
+                    return await self.get_monthly_stats(month=kwargs.get("month"))
                 
                 case "range":
-                    return self.get_range_stats(start_date=kwargs.get("start_date"), end_date=kwargs.get("end_date"), days=kwargs.get("days"))
+                    return await self.get_range_stats(start_date=kwargs.get("start_date"), end_date=kwargs.get("end_date"), days=kwargs.get("days"))
                 
                 case "document":
-                    return self.get_document_stats(document_id=kwargs.get("document_id"))
+                    return await self.get_document_stats(document_id=kwargs.get("document_id"))
         
         except Exception as e:
             logger.error(f"Error retrieving stats for scope '{scope}': {e}")

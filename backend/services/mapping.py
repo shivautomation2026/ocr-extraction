@@ -9,7 +9,7 @@ from rapidfuzz import fuzz, process
 from ..core.config import settings
 from google import genai
 import re
-from backend.services.sap_api import SAPClient
+from backend.services.sap_api import sap_client
 import time
 import datetime
 from backend.services.mapper.pinecone_itemname_mapper import app, mapper_cost_tracker, get_mapper_costs, reset_mapper_costs
@@ -28,12 +28,14 @@ class AccountCode(BaseModel):
 
 class Mapper:
     def __init__(self):
-        self.sap_client = SAPClient()
+        self.sap_client = sap_client
         self.gemini_client = genai.Client(vertexai=True, project=settings.GOOGLE_CLOUD_PROJECT, location=settings.GOOGLE_CLOUD_LOCATION)
-        self.sap_client.save_items_to_csv()
-        self.sap_client.save_item_groups_to_csv()
-        self.sap_client.save_business_partners()
-        self.sap_client.save_uom_groups_to_csv()
+        # self.gemini_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        
+        # self.sap_client.save_items_to_csv()
+        # self.sap_client.save_item_groups_to_csv()
+        # self.sap_client.save_business_partners()
+        # self.sap_client.save_uom_groups_to_csv()
         
         try:
             self.vendor_names_with_codes = pd.read_csv('backend/assets/vendor_list.csv')
@@ -81,11 +83,11 @@ class Mapper:
             self.account_codes_string = None
 
 
-    def find_similar_vendor(self, document_uid: int, threshold: int = 80):
+    async def find_similar_vendor(self, document_uid: int, threshold: int = 80):
         try:
             self.sap_client.save_business_partners()
             
-            document_json = collection.find_one({"uid": document_uid}, {"_id": 0, "extracted_details": 1})
+            document_json = await collection.find_one({"uid": document_uid}, {"_id": 0, "extracted_details": 1})
             if not document_json:
                 raise HTTPException(status_code=404, detail=f"Document with UID {document_uid} not found.")
             incoming_json_for_code = document_json.get("extracted_details", {})
@@ -112,7 +114,7 @@ class Mapper:
                 vendor_row = self.vendor_names_with_codes[self.vendor_names_with_codes["CardName"].str.lower() == matched_vendor_name]
                 if not vendor_row.empty:
                     vendor_code = vendor_row.iloc[0]['CardCode']
-                    collection.update_one(
+                    await collection.update_one(
                         {"uid": document_uid},
                         {"$set": {"extracted_details.vendor_details.code": vendor_code}}
                     )
@@ -124,14 +126,14 @@ class Mapper:
 
             logger.error(f"Error in find_similar_vendor: {e}")
 
-    def map_items_to_codes(self, document_uid: int):
+    async def map_items_to_codes(self, document_uid: int):
 
         if self.item_list_df is None:
             logger.warning("Item list CSV not loaded. Skipping item code mapping.")
             return
         
         try:
-            document_json = collection.find_one({"uid": document_uid}, {"_id": 0, "extracted_details": 1})
+            document_json = await collection.find_one({"uid": document_uid}, {"_id": 0, "extracted_details": 1})
             if not document_json:
                 logger.error(f"Document with UID {document_uid} not found.")
                 return
@@ -151,7 +153,7 @@ class Mapper:
                 item_desc = item.get('description')
                 if not item_desc:
                     logger.warning(f"No product description found for line item {id}")
-                    collection.update_one(
+                    await collection.update_one(
                         {"uid": document_uid},
                         {
                             "$pull": {
@@ -213,7 +215,7 @@ class Mapper:
                     }
                     result = app.invoke(initial_state)
                     if not result['matched_item_code'] == "NO_MATCH":
-                        collection.update_one(
+                        await collection.update_one(
                                 {"uid": document_uid},
                                 {"$set": {f"extracted_details.line_items.{id}.ItemCode": result['matched_item_code'],f"extracted_details.line_items.{id}.description" : result['matched_item_name'],f"extracted_details.line_items.{id}.UoMCode": result['matched_item_inventory_uom_entry']}}
                             )
@@ -247,11 +249,11 @@ class Mapper:
                 day = now.strftime("%Y-%m-%d")
                 month = now.strftime("%Y-%m")
 
-                existing_doc = collection.find_one({"uid": document_uid})
+                existing_doc = await collection.find_one({"uid": document_uid})
                 if existing_doc and "llm_cost_tracking" in existing_doc:
 
 
-                    collection.update_one(
+                    await collection.update_one(
                         {"uid": document_uid},
                         {
                             "$inc":{
@@ -300,7 +302,7 @@ class Mapper:
                         update_doc["$set"]["agg_date"] = agg_date
 
 
-                    aggregation_collection.update_one(
+                    await aggregation_collection.update_one(
                     {"uid": agg_id},
                     update_doc,
                     upsert=True

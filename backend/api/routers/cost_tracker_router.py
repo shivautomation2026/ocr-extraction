@@ -5,12 +5,12 @@ from backend.models import CostStatsRequest
 router = APIRouter(prefix="/cost-tracking", tags=["LLM Cost Tracker"])
 
 @router.get("/stats")
-def get_cost_stats(params: CostStatsRequest = Depends()):
+async def get_cost_stats(params: CostStatsRequest = Depends()):
 
     try:
         cost_queries = CostQueries()
 
-        result = cost_queries.get_stats(
+        result = await cost_queries.get_stats(
             scope=params.scope,
             date=params.date,
             month=params.month,

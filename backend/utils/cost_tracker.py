@@ -128,7 +128,7 @@ class LLMCostTracker:
             "usage_records": self.usage_records
         }
     
-    def save_to_mongodb(self, document_uid: int) -> bool:
+    async def save_to_mongodb(self, document_uid: int) -> bool:
         """
         Save the accumulated LLM cost data to MongoDB before mapping.
         
@@ -150,7 +150,7 @@ class LLMCostTracker:
                 }
             }
             
-            result = collection.update_one(
+            result = await collection.update_one(
                 {"uid": document_uid},
                 {"$set": cost_data}
             )

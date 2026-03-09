@@ -2,12 +2,20 @@ import os
 import datetime
 import json
 from mistralai import Mistral
+from mistralai.models import SDKError
 from dotenv import load_dotenv
 from ..models import OCRResponse
 from ..database import  add_default_prompt
 from ..core.config import settings
 from ..utils.cost_tracker import LLMCostTracker, extract_langchain_usage
 import logging
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception,
+    before_sleep_log,
+)
 # from google import genai 
 from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -42,12 +50,23 @@ class OCR_Processor:
         self.ocr_model = "mistral-ocr-latest"
         # self.gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
         self.llm = ChatGoogleGenerativeAI(model = settings.GEMINI_MODEL_NAME, temperature=0,project=settings.GOOGLE_CLOUD_PROJECT, location=settings.GOOGLE_CLOUD_LOCATION)
+        # self.llm = ChatGoogleGenerativeAI(model = settings.GEMINI_MODEL_NAME, temperature=0)
+
         self.model = "mistral-small-latest"
         self.cost_tracker = LLMCostTracker(model_name=settings.GEMINI_MODEL_NAME)
         logger.info(f"OCR_Processor initialized with model: {self.ocr_model} {self.llm.model}") 
 
+    @retry(
+        retry=retry_if_exception(
+            lambda e: isinstance(e, SDKError) and e.raw_response.status_code in (429, 500, 502, 503, 504)
+        ),
+        wait=wait_exponential(multiplier=2, min=4, max=60),
+        stop=stop_after_attempt(4),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
     def extract_raw_text_from_pdf(self, file_path):
-        """Uploads the PDF and extracts raw text using Mistral."""
+        """Uploads the PDF and extracts raw text using Mistral. Retries on transient 5xx/429 errors."""
         if not os.path.exists(file_path):
             logger.warning(f"Filepath not found: {file_path}")
             raise FileNotFoundError(f"File not found: {file_path}")
@@ -107,11 +126,14 @@ class OCR_Processor:
             
             return ocr_response.pages[0].markdown
 
+        except SDKError as e:
+            logger.error(f"Mistral API error (status {e.raw_response.status_code}) during PDF text extraction: {e}")
+            raise
         except Exception as e:
             logger.error(f"Error during PDF text extraction: {e}")
             raise
 
-    def extract_vendor_details(self, raw_text, user_prompt=""):
+    async def extract_vendor_details(self, raw_text, user_prompt=""):
         try:
             if user_prompt.strip():
                 logger.info("Using custom user prompt for extraction")
@@ -191,7 +213,7 @@ class OCR_Processor:
 
                                     Important: Return ONLY the standard JSON schema object without any markdown formatting or code blocks. No explanations, no headings, no extra text.
                                     """
-                add_default_prompt(prompt_template)
+                await add_default_prompt(prompt_template)
 
             messages = [
                 {
@@ -229,7 +251,7 @@ class OCR_Processor:
             logger.error(f"Error during vendor details extraction: {e}")
             raise
 
-    def process_file(self, file_path, user_prompt="") -> OCRResponse:
+    async def process_file(self, file_path, user_prompt="") -> OCRResponse:
         try:
             # Validate file path
             if not file_path or not file_path.strip():
@@ -262,7 +284,7 @@ class OCR_Processor:
                     extracted_text=""
                 )
             
-            result = self.extract_vendor_details(text, user_prompt)
+            result = await self.extract_vendor_details(text, user_prompt)
             
             # Validate result before processing
             if not result or not result.strip():

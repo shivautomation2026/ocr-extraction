@@ -73,3 +73,19 @@ Visit `http://localhost:8080/docs` for interactive API documentation (Swagger UI
 ### Supported File Types
 
 - PDF documents (.pdf)
+
+## Frontend
+### 1. Change directory to sap-pal
+```
+cd sap-pal
+```
+
+### 2. Install the dependencies 
+```
+npm install
+```
+
+### 3. Start the server
+```
+npm run dev
+```

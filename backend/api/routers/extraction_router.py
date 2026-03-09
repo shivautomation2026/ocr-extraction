@@ -1,15 +1,15 @@
-from fastapi import Request, UploadFile, Form, APIRouter
+from fastapi import Depends, Request, UploadFile, Form, APIRouter
 from fastapi.responses import JSONResponse, FileResponse
 import os
 import shutil
 from backend.services.ocr_processor import OCR_Processor
 from datetime import datetime
-from backend.database import collection
 import logging
 from bson import ObjectId
 import pandas as pd
 import tempfile
 from backend.core.config import settings
+from backend.database import init_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ def format_datetime(dt):
 
 
 @router.post("/", summary = "Upload and extract text from files", description="Upload up to 5 PDF files and optionally provide a custom prompt for text extraction. The extracted text and structured content will be returned in the response.")
-async def upload_file(request: Request, file_list: list[UploadFile], prompt: str = Form(None)):
+async def upload_file(request: Request, file_list: list[UploadFile], prompt: str = Form(None), collection=Depends(init_db)):
     try:
         # Create a new OCR client for each request to get fresh cost tracker
         ocr_client = OCR_Processor()
@@ -50,8 +50,8 @@ async def upload_file(request: Request, file_list: list[UploadFile], prompt: str
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
             
-            result = ocr_client.process_file(file_path, prompt or "")
-            total_uploads = collection.count_documents({"file_name": {"$exists":True}})
+            result = await ocr_client.process_file(file_path, prompt or "")
+            total_uploads = await collection.count_documents({"file_name": {"$exists":True}})
 
             llm_cost_data = ocr_client.cost_tracker.get_total_usage()
             
@@ -71,6 +71,7 @@ async def upload_file(request: Request, file_list: list[UploadFile], prompt: str
                         "usage_records": ocr_client.cost_tracker.usage_records,
                         "tracked_at": format_datetime(datetime.now())
                     },
+                    "approval": "pending",
                     "uploaded_at": format_datetime(datetime.now())
                 }
             else:
@@ -88,16 +89,17 @@ async def upload_file(request: Request, file_list: list[UploadFile], prompt: str
                         "usage_records": ocr_client.cost_tracker.usage_records,
                         "tracked_at": format_datetime(datetime.now())
                     },
+                    "approval": "pending",
                     "uploaded_at": format_datetime(datetime.now())
                 }
-            inserted_doc = collection.insert_one(structure)
+            inserted_doc = await collection.insert_one(structure)
             document_ids.append(inserted_doc.inserted_id)
             ocr_client.cost_tracker.reset()
             
             os.remove(file_path)
 
             if result.status == "success":
-                document = collection.find_one({"_id": ObjectId(inserted_doc.inserted_id)})
+                document = await collection.find_one({"_id": ObjectId(inserted_doc.inserted_id)})
                 document_id = document["uid"]
                 save_as_excel = True
 
@@ -106,6 +108,7 @@ async def upload_file(request: Request, file_list: list[UploadFile], prompt: str
                     "document_id": document_id,
                     "content": result.content,
                     "extracted_text": result.extracted_text,
+                    "approval": "pending"
                 })
                 
             else:
@@ -154,7 +157,7 @@ async def upload_file(request: Request, file_list: list[UploadFile], prompt: str
         )
 
 @router.get("/text-extraction/pdf")
-async def get_all_extractions(file:str = None):
+async def get_all_extractions(file:str = None, collection=Depends(init_db)):
     try:
         if file:
             if not file.endswith('.pdf'):
@@ -175,11 +178,11 @@ async def get_all_extractions(file:str = None):
         }
 
 @router.delete("/delete/{file}")
-async def delete_extraction(file: str):
+async def delete_extraction(file: str, collection=Depends(init_db)):
     try:
         if not file.endswith('.pdf'):
             filename = f"{file}.pdf"
-        result = collection.delete_one({"file_name": filename})
+        result = await collection.delete_one({"file_name": filename})
         if result.deleted_count == 0:
             return JSONResponse(
                 status_code=404,

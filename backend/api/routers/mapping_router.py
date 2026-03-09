@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 import datetime
-from backend.database import collection
+# from backend.database import collection
 import logging
 import pandas as pd
 import json
@@ -10,6 +10,8 @@ from backend.core.config import settings
 from backend.services.mapping import Mapper
 from backend.utils.cost_tracker import LLMCostTracker, extract_langchain_usage
 from pydantic import BaseModel, Field
+from typing import Optional
+from backend.database import init_db
 
 router = APIRouter(prefix="/mapping", tags=["Field Mapping"])
 
@@ -23,8 +25,19 @@ class DocumentLine(BaseModel):
 
 class SAPFields(BaseModel):
     CardCode: str
-    DocDate: str 
+    DocDate: str
     DocumentLines: list[DocumentLine]
+
+class DocumentLinePatch(BaseModel):
+    line_index: int
+    ItemCode: Optional[str] = None
+    TaxCode: Optional[str] = None
+    UoMEntry: Optional[int] = None
+
+class SAPFieldsPatch(BaseModel):
+    CardCode: Optional[str] = None
+    DocDate: Optional[str] = None
+    DocumentLines: Optional[list[DocumentLinePatch]] = None
 
 try:
     sap_required_fields_df = pd.read_csv('backend/assets/sap invoice required field details.csv')
@@ -37,7 +50,9 @@ except FileNotFoundError:
 try:
     if not settings.GOOGLE_API_KEY:
         raise ValueError("GOOGLE_API_KEY is not set in the environment.")
-    client = genai.Client(vertexai=True, project=settings.GOOGLE_CLOUD_PROJECT, location=settings.GOOGLE_CLOUD_LOCATION)
+    # client = genai.Client(vertexai=True, project=settings.GOOGLE_CLOUD_PROJECT, location=settings.GOOGLE_CLOUD_LOCATION)
+    client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+    
     logger.info("Successfully configured Gemini client with model settings.")
 except Exception as e:
     logger.error(f"FATAL: Failed to configure Gemini client: {e}")
@@ -46,17 +61,20 @@ except Exception as e:
 item_mapper = Mapper()
 
 @router.get("/get-mappings/{document_uid}", summary="Get field mappings", description="Retrieve field mappings for a given document type.")
-async def get_field_mappings(document_uid: int):
+async def get_field_mappings(document_uid: int, collection = Depends(init_db)):
+    approval_status = await collection.find_one({"uid": document_uid}, {"approval": 1, "_id": 0})
+    if not approval_status or approval_status.get("approval") != "approved":
+        raise HTTPException(status_code=403, detail="Document is not approved for mapping. Current status: {}".format(approval_status.get("approval") if approval_status else "unknown"))
     if cleaned_df is None:
         raise HTTPException(status_code=503, detail="Mapping service is unavailable: CSV file not loaded.")
     if client is None:
         raise HTTPException(status_code=503, detail="Mapping service is unavailable: AI client not configured.")
     # try:
-    item_mapper.find_similar_vendor(document_uid)
+    await item_mapper.find_similar_vendor(document_uid)
 
-    item_mapper.map_items_to_codes(document_uid)
+    await item_mapper.map_items_to_codes(document_uid)
     try:
-        document_json = collection.find_one({"uid": document_uid}, {"_id": 0, "extracted_details": 1})
+        document_json = await collection.find_one({"uid": document_uid}, {"_id": 0, "extracted_details": 1})
         if not document_json:
             raise HTTPException(status_code=404, detail=f"Document with UID {document_uid} not found.")
 
@@ -141,10 +159,10 @@ async def get_field_mappings(document_uid: int):
         day = now.strftime("%Y-%m-%d")
         month = now.strftime("%Y-%m")
         
-        existing_doc = collection.find_one({"uid": document_uid}, {"llm_cost_tracking": 1})
+        existing_doc = await collection.find_one({"uid": document_uid}, {"llm_cost_tracking": 1})
         if existing_doc and "llm_cost_tracking" in existing_doc:
 
-            collection.update_one(
+            await collection.update_one(
                 {"uid": document_uid},
                 {
                     "$inc":{
@@ -193,7 +211,7 @@ async def get_field_mappings(document_uid: int):
                 update_doc["$set"]["agg_date"] = agg_date
 
 
-            aggregation_collection.update_one(
+            await aggregation_collection.update_one(
                 {"uid": agg_id},
                 update_doc,
                 upsert=True
@@ -207,16 +225,19 @@ async def get_field_mappings(document_uid: int):
 
         logger.info("Successfully received response from Gemini.")
         mapped_result = json.loads(response.text)
+        await collection.update_one(
+            {"uid": document_uid},
+            {"$set": {"mapped_result": mapped_result}}
+        )
 
-        print ("Mapped Result:", mapped_result)
-        
         return JSONResponse(
             status_code=200,
             content={
                 "status": "success",
                 "document_uid": document_uid,
                 "original_extracted_data": incoming_json,
-                "mapped_result": mapped_result
+                "mapped_result": mapped_result,
+                "message": "Document mapped successfully. Please review before posting to SAP."
             }
         )
 
