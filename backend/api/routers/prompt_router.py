@@ -7,7 +7,7 @@ router = APIRouter(prefix="/prompts", tags=["Prompt Management"])
 @router.put("/update-prompt")
 async def update_prompt(doc_id: int, prompt: str):
     try:
-        document = collection.find_one({
+        document = await collection.find_one({
             "uid": doc_id,
             "prompt_type": "user_given_prompt"
         })
@@ -20,7 +20,7 @@ async def update_prompt(doc_id: int, prompt: str):
                 }
             )
         
-        result = collection.update_one(
+        result = await collection.update_one(
             {"uid": doc_id},
             {"$set": {"prompt": prompt}}
         )
@@ -45,12 +45,13 @@ async def update_prompt(doc_id: int, prompt: str):
 @router.get("/default-prompts")
 async def get_default_prompts():
     try:
-        default_prompt = list(collection.find({"default_type": {"$exists": True}},{"_id": 0}))
+        default_prompt = list(await collection.find({"default_type": {"$exists": True}},{"_id": 0}))
         if not default_prompt:
             return {"message": "No default prompts found"}
         else:
             return default_prompt
     except Exception as e:
-        return{
-            "error": str(e)
-        } 
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Error fetching default prompts: {str(e)}"}
+        ) 

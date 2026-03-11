@@ -1,3 +1,4 @@
+from backend.core.config import settings 
 import requests
 import urllib3
 import pandas as pd
@@ -7,7 +8,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-from backend.core.config import settings 
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,9 @@ class SAPClient:
 
             if login_req.status_code == 200:
                 logger.info("Successfully logged in to SAP.")
+                self.save_items_to_csv()
+                self.save_business_partners()
+
             else:
                 logger.error(f"Login failed with status code: {login_req.status_code}")
                 exit(1)
@@ -281,4 +285,8 @@ class SAPClient:
         except Exception as e:
             logger.error(f"Error posting purchase invoice: {e}")
             return {"error": True, "detail": str(e)}
+
+
+# Shared singleton — import this instead of instantiating SAPClient() directly
+sap_client = SAPClient()
 

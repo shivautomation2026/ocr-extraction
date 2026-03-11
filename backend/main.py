@@ -1,10 +1,19 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from .api.routers import extraction_router, prompt_router, mapping_router, sap_invoice_router
+from .api.routers import extraction_router, prompt_router, mapping_router, sap_invoice_router, cost_tracker_router, review_router
+from .database import check_collection
+from contextlib import asynccontextmanager
 recent_filename = None
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.collection = await check_collection()
+    
+    yield
+    
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,8 +30,8 @@ async def get_home(request: Request):
     """)
     
 app.include_router(extraction_router.router)
+app.include_router(review_router.router)
 app.include_router(prompt_router.router)
 app.include_router(mapping_router.router)
 app.include_router(sap_invoice_router.router)
-
-
+app.include_router(cost_tracker_router.router)
