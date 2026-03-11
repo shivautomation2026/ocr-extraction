@@ -16,16 +16,16 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL_NAME: str = ""
 
-    PINECONE_API_KEY: Optional[str]
-    PINECONE_INDEX_NAME: str
+    PINECONE_API_KEY: Optional[str] = None
+    PINECONE_INDEX_NAME: str = ""
 
     EMBEDDING_MODEL: str = "sentence-transformers/all-mpnet-base-v2"
     TOP_K: int = 10
     ALPHA: float = 0.5
 
-    GOOGLE_CLOUD_PROJECT: str
-    GOOGLE_CLOUD_LOCATION: str
-    GOOGLE_APPLICATION_CREDENTIALS: str
+    GOOGLE_CLOUD_PROJECT: str = ""
+    GOOGLE_CLOUD_LOCATION: str = ""
+    GOOGLE_APPLICATION_CREDENTIALS: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
