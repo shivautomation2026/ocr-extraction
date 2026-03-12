@@ -68,7 +68,7 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --set-env-vars "MONGODB_URI=$MONGODB_URI,MISTRAL_API_KEY=$MISTRAL_API_KEY,GOOGLE_API_KEY=$GOOGLE_API_KEY,HF_API_KEY=$HF_API_KEY,COMPANY_DB=$COMPANY_DB,BASE_URL=$BASE_URL,USERNAME=$USERNAME,PASSWORD=$PASSWORD,PINECONE_API_KEY=$PINECONE_API_KEY,PINECONE_INDEX_NAME=$PINECONE_INDEX_NAME,EMBEDDING_MODEL=$EMBEDDING_MODEL,TOP_K=$TOP_K,ALPHA=$ALPHA,GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT,GOOGLE_CLOUD_LOCATION=$GOOGLE_CLOUD_LOCATION,GEMINI_MODEL_NAME=$GEMINI_MODEL_NAME" \
-            --memory 512Mi \
+            --memory 1Gi \
             --cpu 1 \
             --min-instances 0 \
             --max-instances 10 \
@@ -125,6 +125,7 @@ jobs:
             }]
           }
           EOF
+
 
 
 
